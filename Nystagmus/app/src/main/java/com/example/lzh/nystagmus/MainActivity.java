@@ -3,6 +3,7 @@ package com.example.lzh.nystagmus;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Handler;
 import android.os.Message;
@@ -20,6 +21,7 @@ import com.example.lzh.nystagmus.Utils.GetPath;
 import com.example.lzh.nystagmus.Utils.L;
 import com.example.lzh.nystagmus.Utils.T;
 import com.example.lzh.nystagmus.Utils.ImgProcess;
+import com.example.lzh.nystagmus.Utils.Tool;
 
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
@@ -31,30 +33,42 @@ import java.io.File;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import static android.R.attr.breadCrumbShortTitle;
 import static android.R.attr.y;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
 
-    private ImageView imageView_leyedisplay;
+    private ImageView imageView_leye;
+    private ImageView imageView_reye;
     private static final int OPEN_VIDEO=1;
     private VideoCapture capture;
     Timer timer;
 
     private Mat frame;
-    private Bitmap show;
+    private Mat LeftFrame;
+    private Mat RightFrame;
+    private Bitmap LeftView;
+    private Bitmap RightView;
+    private Bitmap TempView;
+    private Mat Leye;
+    private Mat Reye;
+
+    private int EyeNum;//眼睛数目
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Button button_openvideo=(Button)findViewById(R.id.open_video);
-        Button button_startplay=(Button)findViewById(R.id.start_paly);
-        imageView_leyedisplay=(ImageView)findViewById(R.id.picture_show);
-        button_openvideo.setOnClickListener(this);
-        button_startplay.setOnClickListener(this);
-        Log.d("ffff","fffffffff");
-        L.d("eeee","eeeeee");
+        imageView_leye=(ImageView)findViewById(R.id.lefteye_view);
+        imageView_reye=(ImageView)findViewById(R.id.righteye_view);
 
+        ((Button)findViewById(R.id.open_video)).setOnClickListener(this);
+        ((Button)findViewById(R.id.start_paly)).setOnClickListener(this);
+        ((Button)findViewById(R.id.open_camera)).setOnClickListener(this);
+        ((Button)findViewById(R.id.stop_play)).setOnClickListener(this);
+
+
+        L.d("项目打开");
     }
 
     @Override
@@ -73,7 +87,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
                 break;
             }
+            case R.id.open_camera:
+            {
+                break;
+            }
             case R.id.start_paly:
+            {
+                break;
+            }
+            case R.id.stop_play:
             {
                 break;
             }
@@ -90,6 +112,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if(grantResults.length>0&&grantResults[0]== PackageManager.PERMISSION_GRANTED)
                 {
                     /*申请权限后的事情*/
+                    OpenVideo();
                 }
                 else
                 {
@@ -144,10 +167,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         T.showShort(MainActivity.this, "视频打开失败");
                         L.d("视频打开失败");
                     }
-
+                    EyeNum= Tool.VEDIO_ONLY_EYE;
+                    RightFrame=new Mat();
+                    TempView=BitmapFactory.decodeResource(getResources(),R.drawable.novideo);
+                    Utils.bitmapToMat(TempView,RightFrame);
                     timer=new Timer();
-                    timer.schedule(new readFarme(),10,20);
-                    //L.d("开启定时器");
+                    timer.schedule(new ReadFarme(),10,20);
+                    L.e("开启定时器");
                     /*
                     frame=new Mat();
                     while (capture.read(frame))
@@ -172,28 +198,46 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
         }
     }
-    class readFarme extends TimerTask{
+    class ReadFarme extends TimerTask{
 
+        Message msg;
         @Override
         public void run()
         {
-            frame=new Mat();
-            if(!capture.read(frame))
+            Leye=new Mat();
+            Reye=new Mat();
+            if(EyeNum==Tool.VEDIO_ONLY_EYE)
             {
-                timer.cancel();
-            }
+                LeftFrame=new Mat();
 
-            show=Bitmap.createBitmap(frame.width(),frame.height(),Bitmap.Config.RGB_565);
+                if(!capture.read(LeftFrame))
+                {
+                    timer.cancel();
+                    L.d("播放结束，定时器关闭");
+                    msg=new Message();
+                    msg.arg1=1;//代表视频播放结束
+                    mHandle.sendMessage(msg);
+                    return;
+                }
+            }
+            ImgProcess pro=new ImgProcess();
+            pro.Start(LeftFrame,RightFrame,1.5,EyeNum);
+            pro.ProcessSeparate();
+            Leye=pro.OutLeye();
+            Reye=pro.OutReye();
+            LeftView=Bitmap.createBitmap(Leye.width(),Leye.height(),Bitmap.Config.RGB_565);
+            RightView=Bitmap.createBitmap(Reye.width(),Reye.height(),Bitmap.Config.RGB_565);
             try
             {
-                Utils.matToBitmap(frame,show);
+                Utils.matToBitmap(Leye,LeftView);
+                Utils.matToBitmap(Reye,RightView);
             }
             catch (Exception e)
             {
-                L.d("定时器发生异常"+e.toString());
+                L.e("格式转换发生异常："+e.toString());
             }
 
-            Message msg = new Message();
+            msg = new Message();
             mHandle.sendMessage(msg);
         }
     }
@@ -202,7 +246,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         public void handleMessage(Message msg)
         {
-            imageView_leyedisplay.setImageBitmap(show);
+            if(msg.arg1==1)
+            {
+                T.showLong(MainActivity.this,"视频播放结束");
+            }
+            imageView_leye.setImageBitmap(LeftView);
+            imageView_reye.setImageBitmap(RightView);
             super.handleMessage(msg);
         }
     };

@@ -1,4 +1,5 @@
-
+### NystagmusDetection Eye Pupil Localization OpenCV 3.20 for Android 
+### 眼球震动定位检测
 ### 2017.7.20
 - 经过几天测试，可以实现用opencv的VideoCapture进行本地视频读取。
 - VideoCapture要求视频编码必须为MJPEG格式。

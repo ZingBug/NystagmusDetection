@@ -35,11 +35,11 @@ public class ImgProcess {
     private int EyeNum;
     private Mat inimg=new Mat();//输入双眼视频，目前用不到
     private Mat outimg=new Mat();//输出双眼视频，目前也用不到
-    private Mat Reye=new Mat();
-    private Mat Leye=new Mat();
+    private Mat Reye;
+    private Mat Leye;
     private Size size=new Size(9,9);
-    private List<MatOfPoint> Rcontours;
-    private List<MatOfPoint> Lcontours;
+    private List<MatOfPoint> Rcontours=new ArrayList<>();
+    private List<MatOfPoint> Lcontours=new ArrayList<>();
     double Lmaxarea=0;//左眼最大轮廓
     int LmaxAreaIndex=0;//左眼最大轮廓下标
     double Rmaxarea=0;//右眼最大轮廓
@@ -57,8 +57,10 @@ public class ImgProcess {
     public ImgProcess()
     {}
     //开始
-    public void Start(Mat reye, Mat leye, double eyeratio, int eyenum)
+    public void Start(Mat leye, Mat reye, double eyeratio, int eyenum)
     {
+        Reye=new Mat();
+        Leye=new Mat();
         Reye=reye;
         Leye=leye;
         EyeRatio=eyeratio;
@@ -208,6 +210,7 @@ public class ImgProcess {
         if(EyeNum==Tool.NOT_LEYE||EyeNum==Tool.ALL_EYE)
         {
             //此时有右眼
+            L.d("此时有右眼");
             Rgryaimg=GrayDetect(Reye);
             Redgeimg=EdgeDetect(Rgryaimg);
             Imgproc.findContours(Redgeimg,Rcontours,Rhiberarchy,Imgproc.RETR_CCOMP,Imgproc.CHAIN_APPROX_NONE);
@@ -216,6 +219,7 @@ public class ImgProcess {
         if(EyeNum==Tool.NOT_REYE||EyeNum==Tool.ALL_EYE||EyeNum==Tool.VEDIO_ONLY_EYE)
         {
             //此时有左眼
+            L.d("此时有左眼");
             Lgrayimg=GrayDetect(Leye);
             Ledgeimg=EdgeDetect(Lgrayimg);
             Imgproc.findContours(Ledgeimg,Lcontours,Lhiberarchy,Imgproc.RETR_CCOMP,Imgproc.CHAIN_APPROX_NONE);
