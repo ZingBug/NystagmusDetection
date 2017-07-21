@@ -41,6 +41,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private ImageView imageView_leye;
     private ImageView imageView_reye;
     private static final int OPEN_VIDEO=1;
+    private static final int OPEN_CAMERA=2;
     private VideoCapture capture;
     Timer timer;
 
@@ -52,6 +53,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Bitmap TempView;
     private Mat Leye;
     private Mat Reye;
+    private Message msg;
+    private boolean IsTimerRun=false;
 
     private int EyeNum;//眼睛数目
 
@@ -66,7 +69,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         ((Button)findViewById(R.id.start_paly)).setOnClickListener(this);
         ((Button)findViewById(R.id.open_camera)).setOnClickListener(this);
         ((Button)findViewById(R.id.stop_play)).setOnClickListener(this);
-
 
         L.d("项目打开");
     }
@@ -89,14 +91,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
             case R.id.open_camera:
             {
+                T.showLong(this,"网络摄像头未连接");
                 break;
             }
             case R.id.start_paly:
             {
+                StartPlay();
                 break;
             }
             case R.id.stop_play:
             {
+                StopPlay();
                 break;
             }
             default:
@@ -140,10 +145,52 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         intent.addCategory(Intent.CATEGORY_OPENABLE);//和GET_CONTENT一起用
         startActivityForResult(intent,OPEN_VIDEO);
     }
+    private void StartPlay()
+    {
+        if((capture!=null)&&capture.isOpened())
+        {
+            EyeNum= Tool.VEDIO_ONLY_EYE;
+            RightFrame=new Mat();
+            TempView=BitmapFactory.decodeResource(getResources(),R.drawable.novideo);
+            Utils.bitmapToMat(TempView,RightFrame);
+            timer=new Timer();
+            timer.schedule(new ReadFarme(),10,20);
+            L.d("开启定时器,视频开始播放");
+            msg=new Message();
+            msg.obj="视频开始播放";
+            ToastHandle.sendMessage(msg);
+            IsTimerRun=true;
+        }
+        else
+        {
+            msg=new Message();
+            msg.obj="未打开本地视频";
+            L.d("未打开本地视频");
+            ToastHandle.sendMessage(msg);
+        }
+    }
+    private void StopPlay()
+    {
+        if(IsTimerRun)
+        {
+            timer.cancel();
+            L.d("手动关闭视频播放，定时器关闭");
+            msg=new Message();
+            msg.obj="视频播放结束";
+            ToastHandle.sendMessage(msg);
+            capture.release();
+        }
+        else
+        {
+            L.d("请先播放视频");
+            msg=new Message();
+            msg.obj="请先播放视频";
+            ToastHandle.sendMessage(msg);
+        }
+    }
     @Override
     protected void onActivityResult(int requestCode,int resultCode,Intent data)
     {
-
         switch (requestCode)
         {
             case OPEN_VIDEO:
@@ -158,40 +205,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                     if(capture.isOpened())
                     {
-                        T.showShort(MainActivity.this, "视频打开成功");
-                        Log.d("HJY","视频打开成功");
-                        L.d("视频打开成功");
+                        T.showLong(this,"视频加载成功");
+                        L.d("视频加载成功");
                     }
                     else
                     {
-                        T.showShort(MainActivity.this, "视频打开失败");
-                        L.d("视频打开失败");
+                        T.showLong(this,"视频加载失败");
+                        L.d("视频加载失败");
                     }
-                    EyeNum= Tool.VEDIO_ONLY_EYE;
-                    RightFrame=new Mat();
-                    TempView=BitmapFactory.decodeResource(getResources(),R.drawable.novideo);
-                    Utils.bitmapToMat(TempView,RightFrame);
-                    timer=new Timer();
-                    timer.schedule(new ReadFarme(),10,20);
-                    L.e("开启定时器");
-                    /*
-                    frame=new Mat();
-                    while (capture.read(frame))
-                    {
-                        show=Bitmap.createBitmap(frame.width(),frame.height(),Bitmap.Config.RGB_565);
-                        try
-                        {
-                            Utils.matToBitmap(frame,show);
-                        }
-                        catch (Exception e)
-                        {
-                            L.d("定时器发生异常"+e.toString());
-                        }
-                        imageView_leyedisplay.setImageBitmap(show);
-                    }
-                    */
-
                 }
+                break;
+            }
+            case OPEN_CAMERA:
+            {
                 break;
             }
             default:
@@ -200,7 +226,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
     class ReadFarme extends TimerTask{
 
-        Message msg;
         @Override
         public void run()
         {
@@ -215,8 +240,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     timer.cancel();
                     L.d("播放结束，定时器关闭");
                     msg=new Message();
-                    msg.arg1=1;//代表视频播放结束
-                    mHandle.sendMessage(msg);
+                    msg.obj="视频播放结束";//代表视频播放结束
+                    ToastHandle.sendMessage(msg);
+                    IsTimerRun=false;
+                    capture.release();
                     return;
                 }
             }
@@ -236,23 +263,26 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             {
                 L.e("格式转换发生异常："+e.toString());
             }
-
             msg = new Message();
-            mHandle.sendMessage(msg);
+            ViewHandle.sendMessage(msg);
         }
     }
-    Handler mHandle=new Handler()
+    Handler ViewHandle=new Handler()//用以实时刷新显示左右眼
     {
         @Override
         public void handleMessage(Message msg)
         {
-            if(msg.arg1==1)
-            {
-                T.showLong(MainActivity.this,"视频播放结束");
-            }
             imageView_leye.setImageBitmap(LeftView);
             imageView_reye.setImageBitmap(RightView);
             super.handleMessage(msg);
+        }
+    };
+    Handler ToastHandle=new Handler()//用于显示Toast消息
+    {
+        @Override
+        public void handleMessage(Message msg)
+        {
+            T.showLong(MainActivity.this,msg.obj.toString());
         }
     };
 }

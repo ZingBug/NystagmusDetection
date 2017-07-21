@@ -35,8 +35,8 @@ public class ImgProcess {
     private int EyeNum;
     private Mat inimg=new Mat();//输入双眼视频，目前用不到
     private Mat outimg=new Mat();//输出双眼视频，目前也用不到
-    private Mat Reye;
-    private Mat Leye;
+    private Mat Reye=new Mat();
+    private Mat Leye=new Mat();
     private Size size=new Size(9,9);
     private List<MatOfPoint> Rcontours=new ArrayList<>();
     private List<MatOfPoint> Lcontours=new ArrayList<>();
@@ -47,7 +47,10 @@ public class ImgProcess {
     private Rect Rrect=new Rect();
     private Rect Lrect=new Rect();
     private Scalar blue=new Scalar(0,0,255);
+    private Scalar green=new Scalar(0,255,0);
     private Scalar red=new Scalar(255,0,0);
+    private Mat OriginalLeftEye=new Mat();//用于保存原始图像
+    private Mat OriginalRightEye=new Mat();//用于保存原始图像
 
     //public List<Box> Lcircles=new ArrayList<>();
     public Vector<Box> Lcircles=new Vector<Box>();
@@ -59,12 +62,13 @@ public class ImgProcess {
     //开始
     public void Start(Mat leye, Mat reye, double eyeratio, int eyenum)
     {
-        Reye=new Mat();
-        Leye=new Mat();
         Reye=reye;
         Leye=leye;
         EyeRatio=eyeratio;
         EyeNum=eyenum;
+        //保存原始图像数据
+        OriginalLeftEye=leye;
+        OriginalRightEye=Reye;
     }
     //输出双眼
     public Mat Outputimg()
@@ -80,6 +84,7 @@ public class ImgProcess {
     public Mat OutLeye()
     {
         return Leye;
+        //return OriginalLeftEye;
     }
     //图像分割
     private boolean DivideEye(final Mat divedeImg)
@@ -106,13 +111,14 @@ public class ImgProcess {
         }
     }
     //灰度化处理
-    private Mat GrayDetect(Mat grayimg)
+    private Mat GrayDetect(Mat grayimg0)
     {
         Mat grayout=new Mat();
+        Mat grayimg =grayimg0.clone();
         Imgproc.cvtColor(grayimg,grayimg,Imgproc.COLOR_RGB2GRAY);
         Imgproc.medianBlur(grayimg,grayimg,9);
         Imgproc.blur(grayimg,grayimg,size);
-        grayout=Binary(grayimg,37);
+        grayout=Binary(grayimg,55);
         return grayout;
     }
     //二值化处理
@@ -185,12 +191,14 @@ public class ImgProcess {
     //绘制圆
     private Mat PlotC(Vector<Box> circles,Mat midImage)
     {
+        Mat tempMat=new Mat();
+        tempMat=midImage;
         for(int i=0;i<circles.size();++i)
         {
             Point center=new Point(circles.get(i).getX(),circles.get(i).getY());
             int radius=(int)circles.get(i).getR();
-            Imgproc.circle(midImage,center,1,blue,-1,8,0);//画圆心
-            Imgproc.circle(midImage,center,radius,red,1,8,0);//画圆轮廓
+            Imgproc.circle(tempMat,center,1,blue,1,8,0);//画圆心
+            Imgproc.circle(tempMat,center,radius,red,1,8,0);//画圆轮廓
         }
         return midImage;
     }
@@ -277,19 +285,21 @@ public class ImgProcess {
         }
         if(Lcircles.size()>0)
         {
+            Leye=OriginalLeftEye.clone();
             Leye=PlotC(Lcircles,Leye);//绘制左眼圆心和圆轮廓
         }
         if(Rcircles.size()>0)
         {
+            Reye=OriginalLeftEye.clone();
             Reye=PlotC(Rcircles,Reye);//绘制右眼圆心和圆轮廓
         }
         if(Lcontours.size()>0)
         {
-            Imgproc.drawContours(Leye,Lcontours,LmaxAreaIndex,blue,1);
+            Imgproc.drawContours(Leye,Lcontours,LmaxAreaIndex,green,1);
         }
         if(Rcontours.size()>0)
         {
-            Imgproc.drawContours(Reye,Rcontours,RmaxAreaIndex,blue,1);
+            Imgproc.drawContours(Reye,Rcontours,RmaxAreaIndex,green,1);
         }
     }
 }
