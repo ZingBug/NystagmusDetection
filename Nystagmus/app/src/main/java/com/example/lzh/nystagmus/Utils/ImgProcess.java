@@ -118,7 +118,7 @@ public class ImgProcess {
         Imgproc.cvtColor(grayimg,grayimg,Imgproc.COLOR_RGB2GRAY);
         Imgproc.medianBlur(grayimg,grayimg,9);
         Imgproc.blur(grayimg,grayimg,size);
-        grayout=Binary(grayimg,55);
+        grayout=Binary(grayimg,50);
         return grayout;
     }
     //二值化处理
@@ -197,7 +197,7 @@ public class ImgProcess {
         {
             Point center=new Point(circles.get(i).getX(),circles.get(i).getY());
             int radius=(int)circles.get(i).getR();
-            Imgproc.circle(tempMat,center,1,blue,1,8,0);//画圆心
+            Imgproc.circle(tempMat,center,1,blue,-1,8,0);//画圆心
             Imgproc.circle(tempMat,center,radius,red,1,8,0);//画圆轮廓
         }
         return midImage;
@@ -218,7 +218,6 @@ public class ImgProcess {
         if(EyeNum==Tool.NOT_LEYE||EyeNum==Tool.ALL_EYE)
         {
             //此时有右眼
-            L.d("此时有右眼");
             Rgryaimg=GrayDetect(Reye);
             Redgeimg=EdgeDetect(Rgryaimg);
             Imgproc.findContours(Redgeimg,Rcontours,Rhiberarchy,Imgproc.RETR_CCOMP,Imgproc.CHAIN_APPROX_NONE);
@@ -227,7 +226,6 @@ public class ImgProcess {
         if(EyeNum==Tool.NOT_REYE||EyeNum==Tool.ALL_EYE||EyeNum==Tool.VEDIO_ONLY_EYE)
         {
             //此时有左眼
-            L.d("此时有左眼");
             Lgrayimg=GrayDetect(Leye);
             Ledgeimg=EdgeDetect(Lgrayimg);
             Imgproc.findContours(Ledgeimg,Lcontours,Lhiberarchy,Imgproc.RETR_CCOMP,Imgproc.CHAIN_APPROX_NONE);

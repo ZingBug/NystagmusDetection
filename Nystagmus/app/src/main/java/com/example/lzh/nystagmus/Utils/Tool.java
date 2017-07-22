@@ -11,4 +11,7 @@ public class Tool {
     public static final int NOT_ALLEYE=8;
     public static final int VEDIO_EYE=1;
     public static final int VEDIO_ONLY_EYE=6;
+
+    public static final String TAG="H.J.Y";
+    public static final int ChartRefleshNum=10;//波形图刷新率
 }
