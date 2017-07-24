@@ -4,4 +4,13 @@
     <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#FF4081</color>
     <color name="White">#FFFFFF</color>
+    <color name="SlateBlue">#6A5ACD</color>
+    <color name="BlueViolet">#8A2BE2</color>
+    <color name="LightSlateGray">#778899</color>
+    <color name="LightSteelBlue">#B0C4DE</color>
+    <color name="LightBlue">#8E9FE6</color>
+    <color name="DarkRed">#984A59</color>
+    <color name="DarkBlue">#2994B2</color>
+    <color name="LightGreen">#DBF094</color>
+    <color name="LightPink">#E07A5F</color>
 </resources>

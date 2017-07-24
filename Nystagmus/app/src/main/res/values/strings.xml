@@ -1,4 +1,11 @@
 <resources>
     <string name="app_name">Nystagmus</string>
     <string name="app_name_zh">眼震仪</string>
+    <string name="website">www.hit.edu.cn</string>
+    <string name="HIT">哈尔滨工业大学</string>
+    <string name="navigation_drawer_open">open</string>
+    <string name="navigation_drawer_close">close</string>
+    <string name="title_activity_introduce">哈尔滨工业大学</string>
+    <string name="large_text">哈尔滨工业大学（简称哈工大）隶属于工业和信息化部，是首批进入国家“211工程”和“985工程”建设的若干所大学之一。</string>
+    <string name="action_settings">Settings</string>
 </resources>

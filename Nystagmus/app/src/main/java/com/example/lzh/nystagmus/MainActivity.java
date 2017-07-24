@@ -10,13 +10,20 @@ import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
+import android.support.design.widget.NavigationView;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.res.TypedArrayUtils;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBar;
+import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -55,15 +62,23 @@ import static android.R.attr.factor;
 import static android.R.attr.manageSpaceActivity;
 import static android.R.attr.x;
 import static android.R.attr.y;
+import static android.os.Build.VERSION_CODES.N;
+import static com.example.lzh.nystagmus.R.id.toolbar;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
 
     private ImageView imageView_leye;
     private ImageView imageView_reye;
+    private DrawerLayout mDrawerLayout;
     private static final int OPEN_VIDEO=1;
     private static final int OPEN_CAMERA=2;
-    private VideoCapture capture;
-    private Timer timer;
+    private VideoCapture capture;//打开本地视频
+    private VideoCapture vacpLeft;//打开左眼网络视频
+    private VideoCapture vacpRight;//打开右眼网络视频
+    private Timer timer;//定时器
+    private static final int Storage_RequestCode=1;//存储权限申请码
+    private static final String AddressLeftEye="http://192.168.1.233:8080/?action=stream?dummy=param.mjpg";//左眼网络地址
+    private static final String AddressRightEye="http://192.168.1.233:8090/?action=stream?dummy=param.mjpg";//右眼网络地址
 
     private Mat frame;
     private Mat LeftFrame;
@@ -95,24 +110,59 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
         imageView_leye=(ImageView)findViewById(R.id.lefteye_view);
         imageView_reye=(ImageView)findViewById(R.id.righteye_view);
+        mDrawerLayout=(DrawerLayout)findViewById(R.id.drawer_layout);
 
-        if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.KITKAT)
+        NavigationView navView=(NavigationView)findViewById(R.id.nav_view);
+        Toolbar toolbar=(Toolbar)findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(this, mDrawerLayout, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+        mDrawerLayout.setDrawerListener(toggle);
+        toggle.syncState();
+
+        if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.LOLLIPOP)
         {
-            WindowManager.LayoutParams localLayoutParams=getWindow().getAttributes();
-            localLayoutParams.flags=(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS|localLayoutParams.flags);
-            getWindow().setNavigationBarColor(BarColor);
+            //大于安卓5.0即API21版本可用
+            //导航栏颜色与状态栏统一
+            View decorView = getWindow().getDecorView();
+            int option = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;//如果想要隐藏导航栏，可以加上View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            decorView.setSystemUiVisibility(option);
+            //getWindow().setNavigationBarColor(Color.TRANSPARENT);//设置导航栏背景为透明
+            getWindow().setStatusBarColor(Color.TRANSPARENT);
+            getWindow().setNavigationBarColor(getResources().getColor(R.color.DarkBlue));
         }
-
         ((Button)findViewById(R.id.open_video)).setOnClickListener(this);
         ((Button)findViewById(R.id.start_paly)).setOnClickListener(this);
         ((Button)findViewById(R.id.open_camera)).setOnClickListener(this);
         ((Button)findViewById(R.id.stop_play)).setOnClickListener(this);
 
+        navView.setCheckedItem(R.id.nav_intro);//默认选中nav_intro菜单栏默认选中
+        navView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener(){
+            @Override
+            public boolean onNavigationItemSelected(MenuItem item)
+            {
+                switch (item.getItemId())
+                {
+                    case R.id.nav_intro:
+                    {
+                        //打开介绍界面活动
+                        Intent intent=new Intent(MainActivity.this,IntroduceActivity.class);
+                        startActivity(intent);
+                        break;
+                    }
+                    default:
+                        break;
+                }
+                return true;
+            }
+        });
+
         chart_x=(LineChart)findViewById(R.id.xchart);
         chart_y=(LineChart)findViewById(R.id.ychart);
 
-        InitialChart(chart_x);//初始化波形图
-        InitialChart(chart_y);//初始化波形图
+        initialChart(chart_x);//初始化波形图
+        initialChart(chart_y);//初始化波形图
 
         L.d("项目打开");
     }
@@ -125,26 +175,26 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             {
                 if(ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE)!= PackageManager.PERMISSION_GRANTED)
                 {
-                    ActivityCompat.requestPermissions(MainActivity.this,new String []{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},1);
+                    ActivityCompat.requestPermissions(MainActivity.this,new String []{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},Storage_RequestCode);
                 }else
                 {
-                    OpenVideo();
+                    openVideo();
                 }
                 break;
             }
             case R.id.open_camera:
             {
-                T.showLong(this,"网络摄像头未连接");
+                openCamera();
                 break;
             }
             case R.id.start_paly:
             {
-                StartPlay();
+                startPlay();
                 break;
             }
             case R.id.stop_play:
             {
-                StopPlay();
+                stopPlay();
                 break;
             }
             default:
@@ -156,11 +206,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     {
         switch (requestCode)
         {
-            case 1:
+            case Storage_RequestCode:
                 if(grantResults.length>0&&grantResults[0]== PackageManager.PERMISSION_GRANTED)
                 {
                     /*申请权限后的事情*/
-                    OpenVideo();
+                    openVideo();
                 }
                 else
                 {
@@ -179,14 +229,57 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (!OpenCVLoader.initDebug())// 默认加载opencv_java.so库
         {}
     }
-    private void OpenVideo()
+    private void openCamera()
+    {
+        EyeNum=Tool.ALL_EYE;
+        vacpLeft=new VideoCapture(AddressLeftEye);
+        if(!vacpLeft.isOpened())
+        {
+            T.showLong(this,"左眼连接失败");
+            L.d("左眼连接失败");
+            EyeNum=Tool.NOT_LEYE;
+        }
+        vacpRight=new VideoCapture(AddressRightEye);
+        if(!vacpRight.isOpened())
+        {
+            T.showLong(this,"右眼连接失败");
+            L.d("右眼连接失败");
+            if(EyeNum==Tool.ALL_EYE)
+            {
+                EyeNum=Tool.NOT_REYE;
+            }
+            else
+            {
+                EyeNum=Tool.NOT_ALLEYE;
+                T.showLong(this,"摄像头全部打开失败");
+                L.d("摄像头全部打开失败");
+                return;
+            }
+        }
+
+        clearEntey(chart_x);
+        clearEntey(chart_y);
+        IsLeyeCenter=false;
+        IsReyeCenter=false;
+        LeyeCenter=new Box();
+        ReyeCenter=new Box();
+        FrameNum=0;
+
+        timer=new Timer();
+        timer.schedule(new ReadFarme(),50,20);
+        message=new Message();
+        message.obj="视频开始播放";
+        ToastHandle.sendMessage(message);
+        IsTimerRun=true;
+    }
+    private void openVideo()
     {
         Intent intent=new Intent("android.intent.action.GET_CONTENT");
         intent.setType("video/*");
         intent.addCategory(Intent.CATEGORY_OPENABLE);//和GET_CONTENT一起用
         startActivityForResult(intent,OPEN_VIDEO);
     }
-    private void StartPlay()
+    private void startPlay()
     {
         if((capture!=null)&&capture.isOpened())
         {
@@ -197,15 +290,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             timer=new Timer();
 
             /*下面是参数初始化*/
-            ClearEntey(chart_x);
-            ClearEntey(chart_y);
+            clearEntey(chart_x);
+            clearEntey(chart_y);
             IsLeyeCenter=false;
             IsReyeCenter=false;
             LeyeCenter=new Box();
             ReyeCenter=new Box();
             FrameNum=0;
 
-            timer.schedule(new ReadFarme(),100,20);
+            timer.schedule(new ReadFarme(),50,20);
             L.d("开启定时器,视频开始播放");
             message=new Message();
             message.obj="视频开始播放";
@@ -220,7 +313,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             ToastHandle.sendMessage(message);
         }
     }
-    private void StopPlay()
+    private void stopPlay()
     {
         if(IsTimerRun)
         {
@@ -229,7 +322,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             message=new Message();
             message.obj="视频播放结束";
             ToastHandle.sendMessage(message);
-            capture.release();
+            if(capture!=null)
+            {
+                capture.release();
+            }
+            if(vacpLeft!=null)
+            {
+                vacpLeft.release();
+            }
+            if(vacpRight!=null)
+            {
+                vacpRight.release();
+            }
         }
         else
         {
@@ -239,7 +343,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             ToastHandle.sendMessage(message);
         }
     }
-    private void InitialChart(LineChart chart)
+    private void initialChart(LineChart chart)
     {
         Description description=new Description();
         description.setText(Tool.TAG);
@@ -277,7 +381,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         chart.setData(data);
 
     }
-    private void AddEntey(final LineChart add_chart, final float add_x,final float add_y,final int add_flag)
+    private void addEntey(final LineChart add_chart, final float add_x,final float add_y,final int add_flag)
     {
         //flag:0 左眼; flag:1 右眼
         MainActivity.this.runOnUiThread(new Runnable() {
@@ -292,7 +396,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         });
 
     }
-    private void ClearEntey(LineChart chart)
+    private void clearEntey(LineChart chart)
     {
         LineData oldData=chart.getData();
         oldData.clearValues();
@@ -360,6 +464,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         {
             Leye=new Mat();
             Reye=new Mat();
+
+            if(EyeNum==Tool.NOT_LEYE||EyeNum==Tool.ALL_EYE)
+            {
+                //此时有右眼
+                RightFrame=new Mat();
+                vacpRight.read(RightFrame);
+            }
+            if(EyeNum==Tool.NOT_REYE||EyeNum==Tool.ALL_EYE)
+            {
+                //此时有左眼
+                LeftFrame=new Mat();
+                vacpLeft.read(LeftFrame);
+            }
             if(EyeNum==Tool.VEDIO_ONLY_EYE)
             {
                 LeftFrame=new Mat();
@@ -396,8 +513,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 else
                 {
                     //后续相对地址是基于第一帧位置的
-                    AddEntey(chart_x,FrameNum,(float) (box.getX()-LeyeCenter.getX()),0);
-                    AddEntey(chart_y,FrameNum,(float) (box.getY()-LeyeCenter.getY()),0);
+                    addEntey(chart_x,FrameNum,(float) (box.getX()-LeyeCenter.getX()),0);
+                    addEntey(chart_y,FrameNum,(float) (box.getY()-LeyeCenter.getY()),0);
                 }
             }
             for(Box box:pro.Rcircles)
@@ -413,8 +530,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 else
                 {
                     //后续相对地址是基于第一帧位置的
-                    AddEntey(chart_x,FrameNum,(float)(box.getX()-ReyeCenter.getX()),1);
-                    AddEntey(chart_y,FrameNum,(float)(box.getY()-ReyeCenter.getY()),1);
+                    addEntey(chart_x,FrameNum,(float)(box.getX()-ReyeCenter.getX()),1);
+                    addEntey(chart_y,FrameNum,(float)(box.getY()-ReyeCenter.getY()),1);
                 }
             }
             try
