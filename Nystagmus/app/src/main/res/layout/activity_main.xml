@@ -20,13 +20,13 @@
                 android:paddingTop="25dp"
                 app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
                 app:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-                android:background="@color/DarkBlue">
+                android:background="@color/lightSlateGray">
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:text="@string/app_name_zh"
                     android:textSize="20sp"
-                    android:textColor="@color/White"/>
+                    android:textColor="@color/white"/>
             </android.support.v7.widget.Toolbar>
         </android.support.design.widget.AppBarLayout>
 
@@ -58,7 +58,7 @@
                         android:paddingBottom="10dp"
                         android:paddingTop="8dp"
                         android:background="@drawable/flatbutton"
-                        android:textColor="@color/White" />
+                        android:textColor="@color/white" />
                 </LinearLayout>
                 <LinearLayout
                     android:layout_width="0dp"
@@ -78,7 +78,7 @@
                         android:paddingBottom="10dp"
                         android:paddingTop="8dp"
                         android:background="@drawable/flatbutton"
-                        android:textColor="@color/White" />
+                        android:textColor="@color/white" />
                 </LinearLayout>
             </LinearLayout>
             <LinearLayout
@@ -103,7 +103,7 @@
                         android:paddingBottom="10dp"
                         android:paddingTop="8dp"
                         android:background="@drawable/flatbutton"
-                        android:textColor="@color/White" />
+                        android:textColor="@color/white" />
                 </LinearLayout>
                 <LinearLayout
                     android:layout_width="0dp"
@@ -123,7 +123,7 @@
                         android:paddingBottom="10dp"
                         android:paddingTop="8dp"
                         android:background="@drawable/flatbutton"
-                        android:textColor="@color/White" />
+                        android:textColor="@color/white" />
                 </LinearLayout>
 
             </LinearLayout>

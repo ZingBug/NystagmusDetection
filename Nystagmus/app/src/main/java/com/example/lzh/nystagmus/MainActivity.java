@@ -130,7 +130,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             decorView.setSystemUiVisibility(option);
             //getWindow().setNavigationBarColor(Color.TRANSPARENT);//设置导航栏背景为透明
             getWindow().setStatusBarColor(Color.TRANSPARENT);
-            getWindow().setNavigationBarColor(getResources().getColor(R.color.DarkBlue));
+            getWindow().setNavigationBarColor(getResources().getColor(R.color.lightSteelBlue));
         }
         ((Button)findViewById(R.id.open_video)).setOnClickListener(this);
         ((Button)findViewById(R.id.start_paly)).setOnClickListener(this);
@@ -266,7 +266,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         FrameNum=0;
 
         timer=new Timer();
-        timer.schedule(new ReadFarme(),50,20);
+        timer.schedule(new readFarme(),50,20);
         message=new Message();
         message.obj="视频开始播放";
         ToastHandle.sendMessage(message);
@@ -298,7 +298,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             ReyeCenter=new Box();
             FrameNum=0;
 
-            timer.schedule(new ReadFarme(),50,20);
+            timer.schedule(new readFarme(),50,20);
             L.d("开启定时器,视频开始播放");
             message=new Message();
             message.obj="视频开始播放";
@@ -457,7 +457,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
         }
     }
-    class ReadFarme extends TimerTask{
+    class readFarme extends TimerTask{
 
         @Override
         public void run()

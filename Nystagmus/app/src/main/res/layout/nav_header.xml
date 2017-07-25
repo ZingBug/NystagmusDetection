@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="180dp"
 
-    android:background="@color/DarkBlue">
+    android:background="@color/lightSlateGray">
     <ImageView
         android:id="@+id/icon_image"
         android:layout_width="70dp"
@@ -17,13 +17,13 @@
         android:layout_alignParentBottom="true"
         android:text="@string/website"
         android:textSize="14sp"
-        android:textColor="@color/White"
+        android:textColor="@color/white"
         android:layout_marginLeft="5dp"/>
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/HIT"
-        android:textColor="@color/White"
+        android:textColor="@color/white"
         android:textSize="14sp"
         android:layout_above="@id/website"
         android:paddingBottom="5dp"

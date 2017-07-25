@@ -4,7 +4,7 @@
     <item android:state_pressed="true">
         <shape>
             <!--色值-->
-            <solid android:color="@color/DarkBlue" />
+            <solid android:color="@color/lightBlue" />
             <!--圆角-->
             <corners android:radius="10dp" />
         </shape>
@@ -12,7 +12,7 @@
     <!--默认背景-->
     <item>
         <shape>
-            <solid android:color="@color/LightPink" />
+            <solid android:color="@color/lightPurple" />
             <corners android:radius="10dp" />
         </shape>
     </item>
