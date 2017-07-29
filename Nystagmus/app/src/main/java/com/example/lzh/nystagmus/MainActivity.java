@@ -1,6 +1,7 @@
 package com.example.lzh.nystagmus;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -46,9 +47,11 @@ import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
+import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
+import org.opencv.videoio.VideoWriter;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -63,7 +66,9 @@ import static android.R.attr.manageSpaceActivity;
 import static android.R.attr.x;
 import static android.R.attr.y;
 import static android.os.Build.VERSION_CODES.N;
+import static com.example.lzh.nystagmus.R.id.start;
 import static com.example.lzh.nystagmus.R.id.toolbar;
+import static com.example.lzh.nystagmus.Utils.Tool.AddressRightEye;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
 
@@ -77,8 +82,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private VideoCapture vacpRight;//打开右眼网络视频
     private Timer timer;//定时器
     private static final int Storage_RequestCode=1;//存储权限申请码
-    private static final String AddressLeftEye="http://192.168.1.233:8080/?action=stream?dummy=param.mjpg";//左眼网络地址
-    private static final String AddressRightEye="http://192.168.1.233:8090/?action=stream?dummy=param.mjpg";//右眼网络地址
 
     private Mat frame;
     private Mat LeftFrame;
@@ -103,6 +106,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private LineChart chart_y;//y波形图
     private int[] colors=new int[]{Color.rgb(255, 69, 0), Color.rgb(0, 128, 0)};//自定义颜色，第一种为橘黄色，第二种为纯绿色
     private int BarColor=Color.rgb(48,70,155);
+
+    private SharedPreferences pref;//调用存储文件
+
+    /*测试用*/
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -130,7 +137,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             decorView.setSystemUiVisibility(option);
             //getWindow().setNavigationBarColor(Color.TRANSPARENT);//设置导航栏背景为透明
             getWindow().setStatusBarColor(Color.TRANSPARENT);
-            getWindow().setNavigationBarColor(getResources().getColor(R.color.lightSteelBlue));
+            //getWindow().setNavigationBarColor(getResources().getColor(R.color.lightSteelBlue));
         }
         ((Button)findViewById(R.id.open_video)).setOnClickListener(this);
         ((Button)findViewById(R.id.start_paly)).setOnClickListener(this);
@@ -151,6 +158,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         startActivity(intent);
                         break;
                     }
+                    case R.id.nav_settings:
+                    {
+                        Intent intent=new Intent(MainActivity.this,SettingsActivity.class);
+                        startActivity(intent);
+                        break;
+                    }
                     default:
                         break;
                 }
@@ -163,6 +176,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         initialChart(chart_x);//初始化波形图
         initialChart(chart_y);//初始化波形图
+
+        pref=getSharedPreferences("CameraAddress",MODE_PRIVATE);
+        Tool.AddressLeftEye=pref.getString("LeftCameraAddress",Tool.AddressLeftEye);
+        Tool.AddressRightEye=pref.getString("RightCameraAddress",Tool.AddressRightEye);
 
         L.d("项目打开");
     }
@@ -228,18 +245,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onResume();
         if (!OpenCVLoader.initDebug())// 默认加载opencv_java.so库
         {}
+
     }
     private void openCamera()
     {
         EyeNum=Tool.ALL_EYE;
-        vacpLeft=new VideoCapture(AddressLeftEye);
+        vacpLeft=new VideoCapture(Tool.AddressLeftEye);
         if(!vacpLeft.isOpened())
         {
             T.showLong(this,"左眼连接失败");
             L.d("左眼连接失败");
             EyeNum=Tool.NOT_LEYE;
         }
-        vacpRight=new VideoCapture(AddressRightEye);
+        vacpRight=new VideoCapture(Tool.AddressRightEye);
         if(!vacpRight.isOpened())
         {
             T.showLong(this,"右眼连接失败");

@@ -21,7 +21,8 @@
         <activity
             android:name=".IntroduceActivity"
             android:label="@string/title_activity_introduce"
-            android:theme="@style/AppTheme"></activity>
+            android:theme="@style/AppTheme" />
+        <activity android:name=".SettingsActivity"></activity>
     </application>
 
 </manifest>
