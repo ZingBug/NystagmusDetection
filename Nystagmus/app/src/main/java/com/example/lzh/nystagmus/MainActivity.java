@@ -364,7 +364,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void initialChart(LineChart chart)
     {
         Description description=new Description();
-        description.setText(Tool.TAG);
+        description.setText("");
         chart.setDescription(description);//增加描述
 
         chart.setDrawGridBackground(false);//不绘制背景颜色

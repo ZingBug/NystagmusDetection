@@ -20,7 +20,7 @@
                 android:paddingTop="25dp"
                 app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
                 app:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-                android:background="@color/teal">
+                android:background="@color/blue">
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
