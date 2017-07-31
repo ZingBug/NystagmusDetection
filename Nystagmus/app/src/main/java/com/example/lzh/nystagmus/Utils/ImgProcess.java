@@ -40,10 +40,10 @@ public class ImgProcess {
     private Size size=new Size(9,9);
     private List<MatOfPoint> Rcontours=new ArrayList<>();
     private List<MatOfPoint> Lcontours=new ArrayList<>();
-    double Lmaxarea=0;//左眼最大轮廓
-    int LmaxAreaIndex=0;//左眼最大轮廓下标
-    double Rmaxarea=0;//右眼最大轮廓
-    int RmaxAreaIndex=0;//右眼最大轮廓下标
+    private double Lmaxarea=0;//左眼最大轮廓
+    private int LmaxAreaIndex=0;//左眼最大轮廓下标
+    private double Rmaxarea=0;//右眼最大轮廓
+    private int RmaxAreaIndex=0;//右眼最大轮廓下标
     private Rect Rrect=new Rect();
     private Rect Lrect=new Rect();
     private Scalar blue=new Scalar(0,0,255);

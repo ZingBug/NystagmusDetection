@@ -160,6 +160,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     }
                     case R.id.nav_settings:
                     {
+                        //打开软件设置界面
                         Intent intent=new Intent(MainActivity.this,SettingsActivity.class);
                         startActivity(intent);
                         break;
@@ -448,7 +449,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             {
                 if(resultCode==RESULT_OK)
                 {
-                    String x=getApplicationContext().getFilesDir().getAbsolutePath();
                     String VideoPath= GetPath.getPath(this,data.getData());
                     //视频文件地址为：/storage/emulated/0/test.mp4
                     //视频文件必须为mjpeg编码的video
