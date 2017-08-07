@@ -32,6 +32,7 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.example.lzh.nystagmus.Utils.Box;
+import com.example.lzh.nystagmus.Utils.Calculate;
 import com.example.lzh.nystagmus.Utils.GetPath;
 import com.example.lzh.nystagmus.Utils.L;
 import com.example.lzh.nystagmus.Utils.T;
@@ -49,6 +50,7 @@ import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
+import org.opencv.core.Rect;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
 import org.opencv.videoio.VideoWriter;
@@ -62,6 +64,7 @@ import java.util.TimerTask;
 import static android.R.attr.breadCrumbShortTitle;
 import static android.R.attr.data;
 import static android.R.attr.factor;
+import static android.R.attr.flipInterval;
 import static android.R.attr.manageSpaceActivity;
 import static android.R.attr.x;
 import static android.R.attr.y;
@@ -91,6 +94,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Bitmap TempView;
     private Mat Leye;
     private Mat Reye;
+    private Mat AllEye;
     private Message message;
     private Message ChartMessage;
     private boolean IsTimerRun=false;
@@ -105,9 +109,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private LineChart chart_x;//X波形图
     private LineChart chart_y;//y波形图
     private int[] colors=new int[]{Color.rgb(255, 69, 0), Color.rgb(0, 128, 0)};//自定义颜色，第一种为橘黄色，第二种为纯绿色
-    private int BarColor=Color.rgb(48,70,155);
 
     private SharedPreferences pref;//调用存储文件
+
+    private Calculate calculate;
+    private int calNum;//计算时间间隔
+    private int secondTime;//视频测试时间
 
     /*测试用*/
 
@@ -175,8 +182,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         chart_x=(LineChart)findViewById(R.id.xchart);
         chart_y=(LineChart)findViewById(R.id.ychart);
 
-        initialChart(chart_x);//初始化波形图
-        initialChart(chart_y);//初始化波形图
+        initialChart(chart_x,"X坐标");//初始化波形图
+        initialChart(chart_y,"Y坐标");//初始化波形图
 
         pref=getSharedPreferences("CameraAddress",MODE_PRIVATE);
         Tool.AddressLeftEye=pref.getString("LeftCameraAddress",Tool.AddressLeftEye);
@@ -250,15 +257,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
     private void openCamera()
     {
+        if(IsTimerRun)
+        {
+            //如果正在处理视频，则立即停止当前定时器
+            IsTimerRun = false;
+            timer.cancel();
+        }
         EyeNum=Tool.ALL_EYE;
-        vacpLeft=new VideoCapture(Tool.AddressLeftEye);
+        vacpLeft=new VideoCapture(Tool.AddressLeftEye,200);
         if(!vacpLeft.isOpened())
         {
             T.showLong(this,"左眼连接失败");
             L.d("左眼连接失败");
             EyeNum=Tool.NOT_LEYE;
         }
-        vacpRight=new VideoCapture(Tool.AddressRightEye);
+        vacpRight=new VideoCapture(Tool.AddressRightEye,200);
         if(!vacpRight.isOpened())
         {
             T.showLong(this,"右眼连接失败");
@@ -300,12 +313,29 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
     private void startPlay()
     {
+        if(IsTimerRun)
+        {
+            //如果正在处理视频，则立即停止当前定时器
+            IsTimerRun = false;
+            timer.cancel();
+        }
         if((capture!=null)&&capture.isOpened())
         {
-            EyeNum= Tool.VEDIO_ONLY_EYE;
-            RightFrame=new Mat();
-            TempView=BitmapFactory.decodeResource(getResources(),R.drawable.novideo);
-            Utils.bitmapToMat(TempView,RightFrame);
+            Mat tempFrame=new Mat();
+            capture.read(tempFrame);
+            if(tempFrame.width()/((float)tempFrame.height())>1.5)
+            {
+                //双眼视频
+                EyeNum=Tool.VEDIO_EYE;
+            }
+            else
+            {
+                //单眼视频
+                EyeNum= Tool.VEDIO_ONLY_EYE;
+                RightFrame=new Mat();
+                TempView=BitmapFactory.decodeResource(getResources(),R.drawable.novideo);
+                Utils.bitmapToMat(TempView,RightFrame);
+            }
             timer=new Timer();
 
             /*下面是参数初始化*/
@@ -319,6 +349,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             timer.schedule(new readFarme(),50,20);
             L.d("开启定时器,视频开始播放");
+            calculate=new Calculate();
+            calNum=0;//1s计算一次
+            secondTime=0;//0s
             message=new Message();
             message.obj="视频开始播放";
             ToastHandle.sendMessage(message);
@@ -336,6 +369,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     {
         if(IsTimerRun)
         {
+            IsTimerRun=false;
             timer.cancel();
             L.d("手动关闭视频播放，定时器关闭");
             message=new Message();
@@ -362,10 +396,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             ToastHandle.sendMessage(message);
         }
     }
-    private void initialChart(LineChart chart)
+    private void initialChart(LineChart chart,String label)
     {
         Description description=new Description();
-        description.setText("");
+        description.setText(label);
         chart.setDescription(description);//增加描述
 
         chart.setDrawGridBackground(false);//不绘制背景颜色
@@ -476,7 +510,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
     class readFarme extends TimerTask{
-
         @Override
         public void run()
         {
@@ -507,10 +540,73 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     ToastHandle.sendMessage(message);
                     IsTimerRun=false;
                     capture.release();
+                    /*后期处理,用来判断高潮期*/
+                    ++secondTime;
+                    calculate.processLeyeX(secondTime);
+                    int maxSecond=calculate.getHighTidePeriod(secondTime,true);//左眼
+                    message=new Message();
+                    message.obj="最大眼震反应期为从"+ maxSecond+"秒到"+(maxSecond+3)+"秒";//最大眼震反应期
+                    ToastHandle.sendMessage(message);
                     return;
+                }
+                if(calNum==Tool.TimerSecondNum)
+                {
+                    calNum=0;
+                    ++secondTime;
+                    calculate.processLeyeX(secondTime);
+                }
+            }
+            if(EyeNum==Tool.VEDIO_EYE)
+            {
+                //双眼视频都在
+                AllEye=new Mat();
+                if(!capture.read(AllEye))
+                {
+                    timer.cancel();
+                    L.d("播放结束，定时器关闭");
+                    message=new Message();
+                    message.obj="视频播放结束";//代表视频播放结束
+                    ToastHandle.sendMessage(message);
+                    IsTimerRun=false;
+                    capture.release();
+
+                    /*后期处理,用来判断高潮期*/
+                    ++secondTime;
+                    calculate.processLeyeX(secondTime);
+                    calculate.processReyeX(secondTime);
+                    int maxSecond_L=calculate.getHighTidePeriod(secondTime,true);//左眼
+                    int maxSecond_R=calculate.getHighTidePeriod(secondTime,false);//右眼
+
+                    message=new Message();
+                    message.obj="左眼最大眼震反应期为"+ maxSecond_L+"秒到"+(maxSecond_L+Tool.HighTidePeriodSecond)+"秒\n\r" +
+                            "右眼最大眼震反应期为"+maxSecond_R+"秒到"+(maxSecond_R+Tool.HighTidePeriodSecond)+"秒";//最大眼震反应期
+                    ToastHandle.sendMessage(message);
+                    return;
+                }
+                Rect leye_box=new Rect();
+                leye_box.x=1;
+                leye_box.y=1;
+                leye_box.height=AllEye.rows()-1;
+                leye_box.width=AllEye.cols()/2-1;
+                Rect reye_box=new Rect();
+                reye_box.x=leye_box.x+leye_box.width;
+                reye_box.y=1;
+                reye_box.height=AllEye.rows()-1;
+                reye_box.width=AllEye.cols()/2-1;
+                LeftFrame=AllEye.submat(leye_box);
+                RightFrame=AllEye.submat(reye_box);
+
+                if(calNum==Tool.TimerSecondNum)
+                {
+                    calNum=0;
+                    ++secondTime;
+                    calculate.processLeyeX(secondTime);
+                    calculate.processReyeX(secondTime);
                 }
             }
             ++FrameNum;
+            ++calNum;
+
             ImgProcess pro=new ImgProcess();
             pro.Start(LeftFrame,RightFrame,1.5,EyeNum);
             pro.ProcessSeparate();
@@ -533,6 +629,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     //后续相对地址是基于第一帧位置的
                     addEntey(chart_x,FrameNum,(float) (box.getX()-LeyeCenter.getX()),0);
                     addEntey(chart_y,FrameNum,(float) (box.getY()-LeyeCenter.getY()),0);
+                    calculate.addLeyeX((float) (box.getX()-LeyeCenter.getX()));
                 }
             }
             for(Box box:pro.Rcircles)
@@ -550,6 +647,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     //后续相对地址是基于第一帧位置的
                     addEntey(chart_x,FrameNum,(float)(box.getX()-ReyeCenter.getX()),1);
                     addEntey(chart_y,FrameNum,(float)(box.getY()-ReyeCenter.getY()),1);
+                    calculate.addReyeX((float)(box.getX()-ReyeCenter.getX()));
                 }
             }
             try

@@ -67,7 +67,7 @@ public class ImgProcess {
         EyeRatio=eyeratio;
         EyeNum=eyenum;
         //保存原始图像数据
-        OriginalLeftEye=leye;
+        OriginalLeftEye=Leye;
         OriginalRightEye=Reye;
     }
     //输出双眼
@@ -215,7 +215,7 @@ public class ImgProcess {
         boolean IsLeye=false;
         boolean IsReye=false;
 
-        if(EyeNum==Tool.NOT_LEYE||EyeNum==Tool.ALL_EYE)
+        if(EyeNum==Tool.NOT_LEYE||EyeNum==Tool.ALL_EYE||EyeNum==Tool.VEDIO_EYE)
         {
             //此时有右眼
             Rgryaimg=GrayDetect(Reye);
@@ -223,7 +223,7 @@ public class ImgProcess {
             Imgproc.findContours(Redgeimg,Rcontours,Rhiberarchy,Imgproc.RETR_CCOMP,Imgproc.CHAIN_APPROX_NONE);
             IsReye=true;
         }
-        if(EyeNum==Tool.NOT_REYE||EyeNum==Tool.ALL_EYE||EyeNum==Tool.VEDIO_ONLY_EYE)
+        if(EyeNum==Tool.NOT_REYE||EyeNum==Tool.ALL_EYE||EyeNum==Tool.VEDIO_EYE||EyeNum==Tool.VEDIO_ONLY_EYE)
         {
             //此时有左眼
             Lgrayimg=GrayDetect(Leye);
@@ -288,7 +288,7 @@ public class ImgProcess {
         }
         if(Rcircles.size()>0)
         {
-            Reye=OriginalLeftEye.clone();
+            Reye=OriginalRightEye.clone();
             Reye=PlotC(Rcircles,Reye);//绘制右眼圆心和圆轮廓
         }
         if(Lcontours.size()>0)

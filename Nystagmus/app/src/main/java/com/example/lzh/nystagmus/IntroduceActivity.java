@@ -8,6 +8,7 @@ import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -39,6 +40,8 @@ import static com.example.lzh.nystagmus.R.id.pin;
 public class IntroduceActivity extends AppCompatActivity {
 
     private ImageView bingPicImg;
+    private static boolean bingLoad=false;//用来判断是否第一次打开这个活动用于加载照片
+    private SharedPreferences prefs;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -56,23 +59,38 @@ public class IntroduceActivity extends AppCompatActivity {
             getWindow().setStatusBarColor(Color.TRANSPARENT);
             //getWindow().setNavigationBarColor(getResources().getColor(R.color.lightSteelBlue));
         }
+        prefs= PreferenceManager.getDefaultSharedPreferences(this);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
         // 设置返回键和菜单栏可用，可见
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        //加载必应每日一图
+
         bingPicImg=(ImageView) findViewById(R.id.toolbar_image_view);
-        if(isNetworkAvailable()&&ping())
+        if(!bingLoad&&isNetworkAvailable()&&ping())
         {
             //有网络连接并且连接到外网
+            bingLoad=true;
             loadBingPic();
             L.d("已更新图片");
         }
         else
         {
-            Glide.with(this).load(R.drawable.background).into(bingPicImg);
-            L.d("加载保存照片");
+            //从缓存加载
+            String bingPic=prefs.getString("bing_pic",null);
+            if(bingPic!=null)
+            {
+                //缓存里有就从还从里加载
+                Glide.with(this).load(bingPic).into(bingPicImg);
+            }
+            else
+            {
+                //缓存里没有的话，就直接加载保存的照片
+                Glide.with(this).load(R.drawable.background).into(bingPicImg);
+            }
+            L.d("加载缓存照片");
         }
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
@@ -110,6 +128,10 @@ public class IntroduceActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call call,Response response) throws IOException{
                 final String bingPic=response.body().string();
+                //写入到缓存中
+                SharedPreferences.Editor editor=prefs.edit();
+                editor.putString("bing_pic",bingPic);
+                editor.apply();
                 runOnUiThread(new Runnable(){
                     @Override
                     public void run(){
