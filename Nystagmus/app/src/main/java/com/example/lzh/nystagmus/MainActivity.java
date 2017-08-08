@@ -11,6 +11,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
+import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
@@ -39,6 +40,7 @@ import com.example.lzh.nystagmus.Utils.L;
 import com.example.lzh.nystagmus.Utils.T;
 import com.example.lzh.nystagmus.Utils.ImgProcess;
 import com.example.lzh.nystagmus.Utils.Tool;
+import com.getbase.floatingactionbutton.FloatingActionsMenu;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Description;
 import com.github.mikephil.charting.components.XAxis;
@@ -125,6 +127,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView ReyeMaxSPV;
     private DecimalFormat df;//数据格式,float转string保留两位小数
 
+    /*悬浮按钮*/
+    private FloatingActionsMenu menuChange;
+    private com.getbase.floatingactionbutton.FloatingActionButton button_openvideo;
+    private FloatingActionButton button_opencamera;
+    private FloatingActionButton button_startplay;
+    private FloatingActionButton button_stopplay;
+
     /*测试用*/
 
     @Override
@@ -167,10 +176,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             getWindow().setStatusBarColor(Color.TRANSPARENT);
             //getWindow().setNavigationBarColor(getResources().getColor(R.color.lightSteelBlue));
         }
-        ((Button)findViewById(R.id.open_video)).setOnClickListener(this);
-        ((Button)findViewById(R.id.start_paly)).setOnClickListener(this);
-        ((Button)findViewById(R.id.open_camera)).setOnClickListener(this);
-        ((Button)findViewById(R.id.stop_play)).setOnClickListener(this);
+
+        menuChange=(FloatingActionsMenu) findViewById(R.id.float_menu);
+        ((com.getbase.floatingactionbutton.FloatingActionButton)findViewById(R.id.menu_openvideo)).setOnClickListener(this);
+        ((com.getbase.floatingactionbutton.FloatingActionButton)findViewById(R.id.menu_opencamera)).setOnClickListener(this);
+        ((com.getbase.floatingactionbutton.FloatingActionButton)findViewById(R.id.menu_startplay)).setOnClickListener(this);
+        ((com.getbase.floatingactionbutton.FloatingActionButton)findViewById(R.id.menu_stopplay)).setOnClickListener(this);
 
         navView.setCheckedItem(R.id.nav_intro);//默认选中nav_intro菜单栏默认选中
         navView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener(){
@@ -217,7 +228,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     {
         switch (v.getId())
         {
-            case R.id.open_video:
+            case R.id.menu_openvideo:
             {
                 if(ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE)!= PackageManager.PERMISSION_GRANTED)
                 {
@@ -226,25 +237,31 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 {
                     openVideo();
                 }
+                menuChange.collapse();
                 break;
             }
-            case R.id.open_camera:
+            case R.id.menu_opencamera:
             {
                 openCamera();
+                menuChange.collapse();
                 break;
             }
-            case R.id.start_paly:
+            case R.id.menu_startplay:
             {
                 startPlay();
+                menuChange.collapse();
                 break;
             }
-            case R.id.stop_play:
+            case R.id.menu_stopplay:
             {
                 stopPlay();
+                menuChange.collapse();
                 break;
             }
             default:
+            {
                 break;
+            }
         }
     }
     @Override

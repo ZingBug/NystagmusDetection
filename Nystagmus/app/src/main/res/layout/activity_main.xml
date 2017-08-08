@@ -17,7 +17,7 @@
                 android:id="@+id/toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingTop="15dp"
+                android:paddingTop="25dp"
                 app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
                 app:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
                 android:background="@color/blue">
@@ -29,6 +29,7 @@
                     android:textColor="@color/white"/>
             </android.support.v7.widget.Toolbar>
         </android.support.design.widget.AppBarLayout>
+
         <include layout="@layout/content_main"/>
     </android.support.design.widget.CoordinatorLayout>
     <android.support.design.widget.NavigationView
