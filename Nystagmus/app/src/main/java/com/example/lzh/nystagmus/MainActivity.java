@@ -127,13 +127,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView ReyeMaxSPV;
     private DecimalFormat df;//数据格式,float转string保留两位小数
 
-    /*悬浮按钮*/
+    /*悬浮菜单按钮*/
     private FloatingActionsMenu menuChange;
-    private com.getbase.floatingactionbutton.FloatingActionButton button_openvideo;
-    private FloatingActionButton button_opencamera;
-    private FloatingActionButton button_startplay;
-    private FloatingActionButton button_stopplay;
-
     /*测试用*/
 
     @Override
@@ -176,7 +171,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             getWindow().setStatusBarColor(Color.TRANSPARENT);
             //getWindow().setNavigationBarColor(getResources().getColor(R.color.lightSteelBlue));
         }
-
+        /*悬浮菜单按钮设置*/
         menuChange=(FloatingActionsMenu) findViewById(R.id.float_menu);
         ((com.getbase.floatingactionbutton.FloatingActionButton)findViewById(R.id.menu_openvideo)).setOnClickListener(this);
         ((com.getbase.floatingactionbutton.FloatingActionButton)findViewById(R.id.menu_opencamera)).setOnClickListener(this);
