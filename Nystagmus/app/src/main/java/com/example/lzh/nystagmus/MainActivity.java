@@ -29,6 +29,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.lzh.nystagmus.Utils.Box;
@@ -56,6 +57,7 @@ import org.opencv.videoio.VideoCapture;
 import org.opencv.videoio.VideoWriter;
 
 import java.io.File;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
@@ -116,6 +118,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private int calNum;//计算时间间隔
     private int secondTime;//视频测试时间
 
+    /*SPV相关*/
+    private TextView LeyeRealtimeSPV;
+    private TextView ReyeRealtimeSPV;
+    private TextView LeyeMaxSPV;
+    private TextView ReyeMaxSPV;
+    private DecimalFormat df;//数据格式,float转string保留两位小数
+
     /*测试用*/
 
     @Override
@@ -125,6 +134,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         imageView_leye=(ImageView)findViewById(R.id.lefteye_view);
         imageView_reye=(ImageView)findViewById(R.id.righteye_view);
         mDrawerLayout=(DrawerLayout)findViewById(R.id.drawer_layout);
+
+        LeyeRealtimeSPV=(TextView) findViewById(R.id.leyeRealtimeSPV);
+        ReyeRealtimeSPV=(TextView) findViewById(R.id.reyeRealtimeSPV);
+        LeyeMaxSPV=(TextView) findViewById(R.id.leyeMaxSPV);
+        ReyeMaxSPV=(TextView) findViewById(R.id.reyeMaxSPV);
+        /*初始化设置为0*/
+        LeyeRealtimeSPV.setText("0");
+        ReyeRealtimeSPV.setText("0");
+        LeyeMaxSPV.setText("0");
+        ReyeMaxSPV.setText("0");
+
+        df= new DecimalFormat("##.##");//数据格式,float转string保留两位小数
 
         NavigationView navView=(NavigationView)findViewById(R.id.nav_view);
         Toolbar toolbar=(Toolbar)findViewById(R.id.toolbar);
@@ -356,6 +377,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             message.obj="视频开始播放";
             ToastHandle.sendMessage(message);
             IsTimerRun=true;
+
+            LeyeRealtimeSPV.setText("0");
+            ReyeRealtimeSPV.setText("0");
+            LeyeMaxSPV.setText("0");
+            ReyeMaxSPV.setText("0");
         }
         else
         {
@@ -547,6 +573,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     message=new Message();
                     message.obj="最大眼震反应期为从"+ maxSecond+"秒到"+(maxSecond+3)+"秒";//最大眼震反应期
                     ToastHandle.sendMessage(message);
+
                     return;
                 }
                 if(calNum==Tool.TimerSecondNum)
@@ -554,6 +581,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     calNum=0;
                     ++secondTime;
                     calculate.processLeyeX(secondTime);
+
+                    final float leyeRealtime=calculate.getRealTimeSPV(secondTime,true);
+                    final float leyeMax=calculate.getMaxSPV(true);
+                    //强制在UI线程下更新
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            LeyeRealtimeSPV.setText(df.format(leyeRealtime));
+                            LeyeMaxSPV.setText(df.format(leyeMax));
+                        }
+                    });
                 }
             }
             if(EyeNum==Tool.VEDIO_EYE)
@@ -602,6 +640,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     ++secondTime;
                     calculate.processLeyeX(secondTime);
                     calculate.processReyeX(secondTime);
+                    final float leyeRealtime=calculate.getRealTimeSPV(secondTime,true);
+                    final float reyeRealtime=calculate.getRealTimeSPV(secondTime,false);
+                    final float leyeMax=calculate.getMaxSPV(true);
+                    final float reyeMax=calculate.getMaxSPV(false);
+                    //强制在UI线程下更新
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            LeyeRealtimeSPV.setText(df.format(leyeRealtime));//保留两位小数点
+                            ReyeRealtimeSPV.setText(df.format(reyeRealtime));
+                            LeyeMaxSPV.setText(df.format(leyeMax));
+                            ReyeMaxSPV.setText(df.format(reyeMax));
+                        }
+                    });
                 }
             }
             ++FrameNum;
@@ -627,8 +679,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 else
                 {
                     //后续相对地址是基于第一帧位置的
-                    addEntey(chart_x,FrameNum,(float) (box.getX()-LeyeCenter.getX()),0);
-                    addEntey(chart_y,FrameNum,(float) (box.getY()-LeyeCenter.getY()),0);
+                    addEntey(chart_x,FrameNum/(float)30,(float) (box.getX()-LeyeCenter.getX()),0);
+                    addEntey(chart_y,FrameNum/(float)30,(float) (box.getY()-LeyeCenter.getY()),0);
                     calculate.addLeyeX((float) (box.getX()-LeyeCenter.getX()));
                 }
             }
@@ -645,9 +697,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 else
                 {
                     //后续相对地址是基于第一帧位置的
-                    addEntey(chart_x,FrameNum,(float)(box.getX()-ReyeCenter.getX()),1);
-                    addEntey(chart_y,FrameNum,(float)(box.getY()-ReyeCenter.getY()),1);
-                    calculate.addReyeX((float)(box.getX()-ReyeCenter.getX()));
+                    addEntey(chart_x,FrameNum/(float)30,(float)(box.getX()-ReyeCenter.getX()),1);
+                    addEntey(chart_y,FrameNum/(float)30,(float)(box.getY()-ReyeCenter.getY()),1);
+                    calculate.addReyeX((float) (box.getX()-ReyeCenter.getX()));
                 }
             }
             try

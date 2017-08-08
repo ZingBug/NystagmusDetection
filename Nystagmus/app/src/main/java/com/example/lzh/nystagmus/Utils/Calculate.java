@@ -14,6 +14,7 @@ import java.util.ListIterator;
 import java.util.Vector;
 
 import static android.R.attr.endX;
+import static android.R.attr.flipInterval;
 
 /**
  * Created by LZH on 2017/8/4.
@@ -31,6 +32,8 @@ public class Calculate {
     public List<Float> slopeList_R;//右眼所有锯齿波SPV的集合
     private List<Float> slopeSecondList_L;//左眼某秒锯齿波SPV的集合
     private List<Float> slopeSecondList_R;//右眼某秒锯齿波SPV的集合
+    private Hashtable<Integer,Float> LeyeDynamicPeriodSPV;//用以保存动态周期内的SPV,比如1-3秒,2-4秒等,key是开始时间
+    private Hashtable<Integer,Float> ReyeDynamicPeriodSPV;
 
     /*暂时变量集合*/
     private Float startX_L;//某一段直线最开始值
@@ -64,12 +67,15 @@ public class Calculate {
         this.slopeList_R=new ArrayList<Float>();
         this.slopeSecondList_L=new ArrayList<Float>();
         this.slopeSecondList_R=new ArrayList<Float>();
+
         this.FrameRate=20;//默认帧率为30
         this.FrameNum=100;//默认帧数为100
         this.LeyeX=new LinkedList<Float>();//初始化左眼X轴坐标容器
         this.ReyeX=new LinkedList<Float>();//初始化右眼X轴坐标容器
         this.LeyeSecondX=new Hashtable<Integer,Float>();//哈希表初始化
         this.ReyeSecondX=new Hashtable<Integer,Float>();//哈希表初始化
+        this.LeyeDynamicPeriodSPV=new Hashtable<Integer, Float>();//哈希表初始化
+        this.ReyeDynamicPeriodSPV=new Hashtable<Integer, Float>();//哈希表初始化
     }
     //设置视频帧率相关信息
     public void setVideoInfo(int frameRate,int frameNum)
@@ -146,7 +152,7 @@ public class Calculate {
                     {
                         //如果之前是往下走的，现在已经往上走了，所以代表之前那段直线结束
                         //开始计算上一段负斜率
-                        slope_L=(endX_L-startX_L)/(lineLong_L-1);
+                        slope_L=(endX_L-startX_L)/(lineLong_L-1f);
                         waveSlope_L.add(Math.abs(slope_L));
                         lineLong_L=1f;
                         startX_L=endX_L;
@@ -162,7 +168,7 @@ public class Calculate {
                     {
                         //如果之前是往上走的，现在已经往下走了，所以代表之前那段直线结束
                         //开始计算上一段正斜率
-                        slope_L=(endX_L-startX_L)/(lineLong_L-1);
+                        slope_L=(endX_L-startX_L)/(lineLong_L-1f);
                         waveSlope_L.add(Math.abs(slope_L));
                         lineLong_L=1f;
                         startX_L=endX_L;
@@ -179,7 +185,7 @@ public class Calculate {
         {
             sumSPV+=tempSPV;
         }
-        LeyeSecondX.put(second,sumSPV/slopeSecondList_L.size());//存入每秒的平均SPV
+        LeyeSecondX.put(second,sumSPV/(float) slopeSecondList_L.size());//存入每秒的平均SPV
     }
     //处理右眼X轴坐标并保存各秒SPV
     public void processReyeX(int second)
@@ -240,7 +246,7 @@ public class Calculate {
                     {
                         //如果之前是往下走的，现在已经往上走了，所以代表之前那段直线结束
                         //开始计算上一段负斜率
-                        slope_R=(endX_R-startX_R)/(lineLong_R-1);
+                        slope_R=(endX_R-startX_R)/(lineLong_R-1f);
                         waveSlope_R.add(Math.abs(slope_R));
                         lineLong_R=1f;
                         startX_R=endX_R;
@@ -256,7 +262,7 @@ public class Calculate {
                     {
                         //如果之前是往上走的，现在已经往下走了，所以代表之前那段直线结束
                         //开始计算上一段正斜率
-                        slope_R=(endX_R-startX_R)/(lineLong_R-1);
+                        slope_R=(endX_R-startX_R)/(lineLong_R-1f);
                         waveSlope_R.add(Math.abs(slope_R));
                         lineLong_R=1f;
                         startX_R=endX_R;
@@ -273,7 +279,7 @@ public class Calculate {
         {
             sumSPV+=tempSPV;
         }
-        ReyeSecondX.put(second,sumSPV/slopeSecondList_R.size());//存入每秒的平均SPV
+        ReyeSecondX.put(second,sumSPV/(float) slopeSecondList_R.size());//存入每秒的平均SPV
     }
     //取一个完整波形斜率中的小值
     private Float miniSlope(HashSet<Float> slopes)
@@ -326,5 +332,94 @@ public class Calculate {
             }
         }
         return maxSecond;
+    }
+    //用以计算实时SPV
+    /*
+    * second用来表示当前时间
+    * eye用来表示左右眼睛,true代表左眼,false代表右眼*/
+    public float getRealTimeSPV(int second,boolean eye)
+    {
+        int secondStart;
+        float totalSPV=0f;
+        float tempSPV=0f;
+        if(second>=Tool.HighTidePeriodSecond)
+        {
+            //可以计算要给完整的周期
+            secondStart=second+1-Tool.HighTidePeriodSecond;
+            for(;secondStart<=Tool.HighTidePeriodSecond;++secondStart)
+            {
+                if(eye)
+                {
+                    //左眼
+                    totalSPV+=LeyeSecondX.get(secondStart);
+                }
+                else
+                {
+                    //右眼
+                    totalSPV+=ReyeSecondX.get(secondStart);
+                }
+            }
+            tempSPV=totalSPV/(float) Tool.HighTidePeriodSecond;
+
+        }
+        else
+        {
+            //假如周期为10s,假设现在是4s,则只计算前4s的
+            secondStart=1;
+            for(;secondStart<=second;++secondStart)
+            {
+                if(eye)
+                {
+                    //左眼
+                    totalSPV+=LeyeSecondX.get(secondStart);
+                }
+                else
+                {
+                    //右眼
+                    totalSPV+=ReyeSecondX.get(secondStart);
+                }
+            }
+            tempSPV=totalSPV/(float)second;
+        }
+        if(eye)
+        {
+            //左眼
+            LeyeDynamicPeriodSPV.put(second,tempSPV);
+        }
+        else
+        {
+            //右眼
+            ReyeDynamicPeriodSPV.put(second,tempSPV);
+        }
+
+        return tempSPV;
+    }
+    //用以计算前段时间最大的SPV
+    public float getMaxSPV(boolean eye)
+    {
+        float tempMax=0f;
+        if(eye)
+        {
+            //左眼
+            for(float periodSPV:LeyeDynamicPeriodSPV.values())
+            {
+                if(periodSPV>tempMax)
+                {
+                    tempMax=periodSPV;
+                }
+            }
+        }
+        else
+        {
+            //右眼
+            for(float periodSPV:ReyeDynamicPeriodSPV.values())
+            {
+                if(periodSPV>tempMax)
+                {
+                    tempMax=periodSPV;
+                }
+            }
+        }
+        return tempMax;
     }
 }
