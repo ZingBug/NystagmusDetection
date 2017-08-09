@@ -125,6 +125,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView ReyeRealtimeSPV;
     private TextView LeyeMaxSPV;
     private TextView ReyeMaxSPV;
+    private TextView LeyeHighperiod;
+    private TextView ReyeHighperiod;
     private DecimalFormat df;//数据格式,float转string保留两位小数
 
     /*悬浮菜单按钮*/
@@ -143,11 +145,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         ReyeRealtimeSPV=(TextView) findViewById(R.id.reyeRealtimeSPV);
         LeyeMaxSPV=(TextView) findViewById(R.id.leyeMaxSPV);
         ReyeMaxSPV=(TextView) findViewById(R.id.reyeMaxSPV);
+        LeyeHighperiod=(TextView) findViewById(R.id.leyeHighperiod);
+        ReyeHighperiod=(TextView) findViewById(R.id.reyeHighperiod);
         /*初始化设置为0*/
         LeyeRealtimeSPV.setText("0");
         ReyeRealtimeSPV.setText("0");
         LeyeMaxSPV.setText("0");
         ReyeMaxSPV.setText("0");
+        LeyeHighperiod.setText("0s");
+        ReyeHighperiod.setText("0s");
 
         df= new DecimalFormat("##.##");//数据格式,float转string保留两位小数
 
@@ -336,6 +342,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         message.obj="视频开始播放";
         ToastHandle.sendMessage(message);
         IsTimerRun=true;
+
+        LeyeRealtimeSPV.setText("0");
+        ReyeRealtimeSPV.setText("0");
+        LeyeMaxSPV.setText("0");
+        ReyeMaxSPV.setText("0");
+        LeyeHighperiod.setText("0s");
+        ReyeHighperiod.setText("0s");
     }
     private void openVideo()
     {
@@ -394,6 +407,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             ReyeRealtimeSPV.setText("0");
             LeyeMaxSPV.setText("0");
             ReyeMaxSPV.setText("0");
+            LeyeHighperiod.setText("0s");
+            ReyeHighperiod.setText("0s");
         }
         else
         {
@@ -581,11 +596,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     /*后期处理,用来判断高潮期*/
                     ++secondTime;
                     calculate.processLeyeX(secondTime);
-                    int maxSecond=calculate.getHighTidePeriod(secondTime,true);//左眼
-                    message=new Message();
-                    message.obj="最大眼震反应期为从"+ maxSecond+"秒到"+(maxSecond+3)+"秒";//最大眼震反应期
-                    ToastHandle.sendMessage(message);
-
+                    final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
+                    //强制在UI线程下更新
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            LeyeHighperiod.setText(Tool.getPeriod(maxSecond_L));
+                        }
+                    });
                     return;
                 }
                 if(calNum==Tool.TimerSecondNum)
@@ -596,12 +614,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                     final float leyeRealtime=calculate.getRealTimeSPV(secondTime,true);
                     final float leyeMax=calculate.getMaxSPV(true);
+                    final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
                     //强制在UI线程下更新
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
                             LeyeRealtimeSPV.setText(df.format(leyeRealtime));
                             LeyeMaxSPV.setText(df.format(leyeMax));
+                            LeyeHighperiod.setText(Tool.getPeriod(maxSecond_L));
                         }
                     });
                 }
@@ -624,13 +644,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     ++secondTime;
                     calculate.processLeyeX(secondTime);
                     calculate.processReyeX(secondTime);
-                    int maxSecond_L=calculate.getHighTidePeriod(secondTime,true);//左眼
-                    int maxSecond_R=calculate.getHighTidePeriod(secondTime,false);//右眼
-
-                    message=new Message();
-                    message.obj="左眼最大眼震反应期为"+ maxSecond_L+"秒到"+(maxSecond_L+Tool.HighTidePeriodSecond)+"秒\n\r" +
-                            "右眼最大眼震反应期为"+maxSecond_R+"秒到"+(maxSecond_R+Tool.HighTidePeriodSecond)+"秒";//最大眼震反应期
-                    ToastHandle.sendMessage(message);
+                    final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
+                    final int maxSecond_R=calculate.getHighTidePeriod(false);//右眼
+                    //强制在UI线程下更新
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            LeyeHighperiod.setText(Tool.getPeriod(maxSecond_L));
+                            ReyeHighperiod.setText(Tool.getPeriod(maxSecond_R));
+                        }
+                    });
                     return;
                 }
                 Rect leye_box=new Rect();
@@ -656,6 +679,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     final float reyeRealtime=calculate.getRealTimeSPV(secondTime,false);
                     final float leyeMax=calculate.getMaxSPV(true);
                     final float reyeMax=calculate.getMaxSPV(false);
+                    final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
+                    final int maxSecond_R=calculate.getHighTidePeriod(false);//右眼
                     //强制在UI线程下更新
                     runOnUiThread(new Runnable() {
                         @Override
@@ -664,6 +689,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             ReyeRealtimeSPV.setText(df.format(reyeRealtime));
                             LeyeMaxSPV.setText(df.format(leyeMax));
                             ReyeMaxSPV.setText(df.format(reyeMax));
+                            LeyeHighperiod.setText(Tool.getPeriod(maxSecond_L));
+                            ReyeHighperiod.setText(Tool.getPeriod(maxSecond_R));
                         }
                     });
                 }

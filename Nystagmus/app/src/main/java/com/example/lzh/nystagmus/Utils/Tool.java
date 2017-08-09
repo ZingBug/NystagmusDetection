@@ -22,4 +22,9 @@ public class Tool {
 
     public static final int TimerSecondNum=30;//1s时间内定时器的间隔
     public static final int HighTidePeriodSecond=3;//最大眼震反应期时间
+
+    public static String getPeriod(int startTime)
+    {
+        return startTime+"s-"+(startTime+HighTidePeriodSecond)+"s";
+    }
 }

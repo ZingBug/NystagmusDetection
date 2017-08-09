@@ -5,6 +5,7 @@ import android.support.annotation.NonNull;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Iterator;
@@ -15,6 +16,7 @@ import java.util.Vector;
 
 import static android.R.attr.endX;
 import static android.R.attr.flipInterval;
+import static android.R.attr.max;
 
 /**
  * Created by LZH on 2017/8/4.
@@ -304,33 +306,44 @@ public class Calculate {
     /*
     * totalSecond用来表示测试总时间
     * eye用来表示左右眼睛,true代表左眼,false代表右眼*/
-    public int getHighTidePeriod(int totalSecond,boolean eye)
+    public int getHighTidePeriod(boolean eye)
     {
         float temp=0f;
-        float secondSPV=0f;//用来计算最大眼震反应期的慢相角速度之和
+        float max=0;
+        int tempSecond=0;
         int maxSecond=0;//最大眼震反应期开始时间
-        for(int i=1;i+Tool.HighTidePeriodSecond<totalSecond;++i)
+        Enumeration e;
+        if(eye)
         {
-            secondSPV=0;
-            for(int j=i;j<i+Tool.HighTidePeriodSecond;++j)
+            //左眼
+            e=LeyeDynamicPeriodSPV.keys();
+            while (e.hasMoreElements())
             {
-                if(eye)
+                tempSecond=(int)e.nextElement();
+                temp=LeyeDynamicPeriodSPV.get(tempSecond);
+                if(temp>max)
                 {
-                    //左眼
-                    secondSPV+=LeyeSecondX.get(j);
+                    max=temp;
+                    maxSecond=tempSecond;
                 }
-                else
-                {
-                    //右眼
-                    secondSPV+=ReyeSecondX.get(j);
-                }
-            }
-            if(secondSPV>=temp)
-            {
-                temp=secondSPV;
-                maxSecond=i;
             }
         }
+        else
+        {
+            //右眼
+            e=ReyeDynamicPeriodSPV.keys();
+            while (e.hasMoreElements())
+            {
+                tempSecond=(int)e.nextElement();
+                temp=ReyeDynamicPeriodSPV.get(tempSecond);
+                if(temp>max)
+                {
+                    max=temp;
+                    maxSecond=tempSecond;
+                }
+            }
+        }
+
         return maxSecond;
     }
     //用以计算实时SPV

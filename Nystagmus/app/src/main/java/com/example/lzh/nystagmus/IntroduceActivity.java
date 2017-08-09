@@ -161,7 +161,6 @@ public class IntroduceActivity extends AppCompatActivity {
         }
         return false;
     }
-
     /**
      * 通过Ping来判断是否真有外网连接
      * @return flase 表示没有网络 true 表示有网络
