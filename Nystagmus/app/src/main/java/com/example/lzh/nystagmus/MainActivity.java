@@ -49,6 +49,7 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
+import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.core.Core;
@@ -76,6 +77,8 @@ import static android.os.Build.VERSION_CODES.N;
 import static com.example.lzh.nystagmus.R.id.start;
 import static com.example.lzh.nystagmus.R.id.toolbar;
 import static com.example.lzh.nystagmus.Utils.Tool.AddressRightEye;
+import static org.opencv.videoio.Videoio.CAP_MODE_YUYV;
+import static org.opencv.videoio.Videoio.CV_CAP_FFMPEG;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
 
@@ -303,14 +306,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             timer.cancel();
         }
         EyeNum=Tool.ALL_EYE;
-        vacpLeft=new VideoCapture(Tool.AddressLeftEye,200);
+
+        vacpLeft=new VideoCapture(Tool.AddressLeftEye,CV_CAP_FFMPEG);
         if(!vacpLeft.isOpened())
         {
             T.showLong(this,"左眼连接失败");
             L.d("左眼连接失败");
             EyeNum=Tool.NOT_LEYE;
         }
-        vacpRight=new VideoCapture(Tool.AddressRightEye,200);
+        vacpRight=new VideoCapture(Tool.AddressRightEye,CAP_MODE_YUYV);
         if(!vacpRight.isOpened())
         {
             T.showLong(this,"右眼连接失败");
@@ -352,6 +356,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
     private void openVideo()
     {
+        if(IsTimerRun)
+        {
+            timer.cancel();
+        }
         Intent intent=new Intent("android.intent.action.GET_CONTENT");
         intent.setType("video/*");
         intent.addCategory(Intent.CATEGORY_OPENABLE);//和GET_CONTENT一起用
