@@ -19,7 +19,7 @@ android {
     }
     sourceSets {
         main {
-            jniLibs.srcDirs = ['src/main/jniLibs']
+            jniLibs.srcDirs = ['libs']
         }
     }
     dependencies {
@@ -32,7 +32,6 @@ dependencies {
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-    compile project(':openCVLibrary320')
     compile 'com.android.support:appcompat-v7:25.3.1'
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
     compile 'com.android.support:design:25.3.1'
@@ -42,4 +41,13 @@ dependencies {
     compile 'com.getbase:floatingactionbutton:1.10.1'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.0.0-RC1'
     testCompile 'junit:junit:4.12'
+    compile files('libs/ffmpeg-android-arm.jar')
+    compile files('libs/ffmpeg-platform.jar')
+    compile files('libs/ffmpeg.jar')
+    compile files('libs/javacpp.jar')
+    compile files('libs/javacv-platform.jar')
+    compile files('libs/javacv.jar')
+    compile files('libs/opencv-android-arm.jar')
+    compile files('libs/opencv-platform.jar')
+    compile files('libs/opencv.jar')
 }

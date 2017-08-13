@@ -4,15 +4,40 @@ import android.support.annotation.NonNull;
 
 import com.example.lzh.nystagmus.Utils.Tool;
 import com.example.lzh.nystagmus.Utils.Box;
-import org.opencv.core.Mat;
-import org.opencv.core.MatOfPoint;
-import org.opencv.core.MatOfPoint3f;
-import org.opencv.core.Point;
-import org.opencv.core.Point3;
-import org.opencv.core.Rect;
-import org.opencv.core.Scalar;
-import org.opencv.core.Size;
-import org.opencv.imgproc.Imgproc;
+
+import org.bytedeco.javacpp.helper.*;
+import org.bytedeco.javacpp.Loader;
+import org.bytedeco.javacpp.Loader.*;
+import org.bytedeco.javacpp.indexer.*;
+import org.bytedeco.javacpp.opencv_highgui.*;
+import org.bytedeco.javacv.CanvasFrame;
+import org.bytedeco.javacpp.opencv_core;
+import org.bytedeco.javacpp.opencv_core.*;
+import org.bytedeco.javacpp.opencv_imgcodecs;
+import org.bytedeco.javacpp.opencv_imgproc;
+import org.bytedeco.javacpp.opencv_ml;
+import org.bytedeco.javacpp.opencv_videoio;
+import org.bytedeco.javacpp.opencv_core.Mat;
+import org.bytedeco.javacpp.opencv_core.Size;
+import org.bytedeco.javacpp.opencv_core.Rect;
+import org.bytedeco.javacpp.opencv_core.Scalar;
+import org.bytedeco.javacpp.avutil.*;
+import org.bytedeco.javacpp.Pointer.*;
+import org.bytedeco.javacpp.opencv_core.CvSeqReader;
+import org.bytedeco.javacpp.opencv_core.CvSeq;
+import org.bytedeco.javacpp.opencv_core.Point2dVectorVector;
+import org.bytedeco.javacpp.opencv_core.CvScalar;
+import org.bytedeco.javacpp.opencv_highgui.*;
+import org.bytedeco.javacpp.opencv_core.CvRect;
+import org.bytedeco.javacpp.opencv_imgproc.*;
+import org.bytedeco.javacv.*;
+import org.bytedeco.javacpp.*;
+import org.bytedeco.javacpp.opencv_imgcodecs.*;
+import org.bytedeco.javacpp.opencv_features2d.*;
+import org.bytedeco.javacv.JavaCV.*;
+
+import java.util.List;
+import java.util.Vector;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -24,6 +49,16 @@ import java.util.Vector;
 import static android.os.Build.VERSION_CODES.N;
 import static java.lang.Math.round;
 import static java.lang.Math.sqrt;
+import static org.bytedeco.javacpp.opencv_imgproc.CV_CHAIN_APPROX_NONE;
+import static org.bytedeco.javacpp.opencv_imgproc.CV_CHAIN_APPROX_SIMPLE;
+import static org.bytedeco.javacpp.opencv_imgproc.CV_POLY_APPROX_DP;
+import static org.bytedeco.javacpp.opencv_imgproc.CV_RETR_CCOMP;
+import static org.bytedeco.javacpp.opencv_imgproc.CV_RETR_LIST;
+import static org.bytedeco.javacpp.opencv_imgproc.boundingRect;
+import static org.bytedeco.javacpp.opencv_imgproc.cvApproxPoly;
+import static org.bytedeco.javacpp.opencv_imgproc.cvContourPerimeter;
+import static org.bytedeco.javacpp.opencv_imgproc.cvGetSpatialMoment;
+import static org.bytedeco.javacpp.opencv_ml.SVM.C;
 
 /**
  * 与图像处理相关的函数
@@ -38,23 +73,26 @@ public class ImgProcess {
     private Mat Reye=new Mat();
     private Mat Leye=new Mat();
     private Size size=new Size(9,9);
-    private List<MatOfPoint> Rcontours=new ArrayList<>();
-    private List<MatOfPoint> Lcontours=new ArrayList<>();
+    private MatVector Rcontours=new MatVector();
+    private MatVector Lcontours=new MatVector();
     private double Lmaxarea=0;//左眼最大轮廓
     private int LmaxAreaIndex=0;//左眼最大轮廓下标
     private double Rmaxarea=0;//右眼最大轮廓
     private int RmaxAreaIndex=0;//右眼最大轮廓下标
-    private Rect Rrect=new Rect();
-    private Rect Lrect=new Rect();
-    private Scalar blue=new Scalar(0,0,255);
-    private Scalar green=new Scalar(0,255,0);
-    private Scalar red=new Scalar(255,0,0);
+    private CvRect Rrect=new CvRect();
+    private CvRect Lrect=new CvRect();
+    private Scalar blue=new Scalar(0,0,255,0);
+    private Scalar green=new Scalar(0,255,0,0);
+    private Scalar red=new Scalar(255,0,0,0);
+    private CvScalar cvblue=new CvScalar(0,0,255,0);
+    private CvScalar cvgreen=new CvScalar(0,255,0,0);
+    private CvScalar cvred=new CvScalar(255,0,0,0);
     private Mat OriginalLeftEye=new Mat();//用于保存原始图像
     private Mat OriginalRightEye=new Mat();//用于保存原始图像
-
-    //public List<Box> Lcircles=new ArrayList<>();
     public Vector<Box> Lcircles=new Vector<Box>();
     public Vector<Box> Rcircles=new Vector<Box>();
+    private IplImage LeyeImage;
+    private IplImage ReyeImage;
 
     //构造函数
     public ImgProcess()
@@ -62,13 +100,15 @@ public class ImgProcess {
     //开始
     public void Start(Mat leye, Mat reye, double eyeratio, int eyenum)
     {
-        Reye=reye;
-        Leye=leye;
+        Reye=new Mat(reye);
+        Leye=new Mat(leye);
         EyeRatio=eyeratio;
         EyeNum=eyenum;
+        LeyeImage=new IplImage(leye);
+        ReyeImage=new IplImage(reye);
         //保存原始图像数据
-        OriginalLeftEye=Leye;
-        OriginalRightEye=Reye;
+        OriginalLeftEye=new Mat(leye);
+        OriginalRightEye=new Mat(reye);
     }
     //输出双眼
     public Mat Outputimg()
@@ -79,6 +119,7 @@ public class ImgProcess {
     public Mat OutReye()
     {
         return Reye;
+        //return OriginalRightEye;
     }
     //输出左眼
     public Mat OutLeye()
@@ -86,23 +127,16 @@ public class ImgProcess {
         return Leye;
         //return OriginalLeftEye;
     }
-    //图像分割
+    //图像分割  这个函数有bug
     private boolean DivideEye(final Mat divedeImg)
     {
         if(divedeImg.rows()>0&&divedeImg.cols()>0)
         {
-            Rect leye_box=new Rect();
-            leye_box.x=1;
-            leye_box.y=1;
-            leye_box.height=divedeImg.rows()-1;
-            leye_box.width=divedeImg.cols()/2-1;
-            Rect reye_box=new Rect();
-            reye_box.x=leye_box.x+leye_box.width;
-            reye_box.y=1;
-            reye_box.height=divedeImg.rows()-1;
-            reye_box.width=divedeImg.cols()/2-1;
-            Leye=divedeImg.submat(leye_box);
-            Reye=divedeImg.submat(reye_box);
+
+            Rect leye_box=new Rect(1,1,divedeImg.cols()/2-1,divedeImg.rows()-1);
+            Rect reye_box=new Rect(leye_box.x()+leye_box.width(),1,divedeImg.cols()/2-1,divedeImg.rows()-1);
+            Leye=divedeImg.apply(leye_box);
+            Reye=divedeImg.apply(reye_box);
             return true;
         }
         else
@@ -114,33 +148,36 @@ public class ImgProcess {
     private Mat GrayDetect(Mat grayimg0)
     {
         Mat grayout=new Mat();
-        Mat grayimg =grayimg0.clone();
-        Imgproc.cvtColor(grayimg,grayimg,Imgproc.COLOR_RGB2GRAY);
-        Imgproc.medianBlur(grayimg,grayimg,9);
-        Imgproc.blur(grayimg,grayimg,size);
-        grayout=Binary(grayimg,50);
+        Mat grayimg =new Mat(grayimg0);
+
+        opencv_imgproc.cvtColor(grayimg,grayimg,opencv_imgproc.COLOR_RGB2GRAY);//灰度化处理
+        opencv_imgproc.medianBlur(grayimg,grayimg,9);//中值滤波
+        opencv_imgproc.blur(grayimg,grayimg,size);
+        grayout=Binary(grayimg,45);
         return grayout;
     }
     //二值化处理
     private Mat Binary(Mat binaryimg, int value)
     {
         Mat binaryout=new Mat();
-        Imgproc.threshold(binaryimg,binaryout,value,255,Imgproc.THRESH_BINARY);
+        opencv_imgproc.threshold(binaryimg,binaryout,value,255,opencv_imgproc.THRESH_BINARY);
         return binaryout;
     }
     //二乘法拟合圆
-    private Box circleLeastFit(MatOfPoint points)
+    private Box circleLeastFit(Vector<Point> points)
     {
-        List<Point> points0=points.toList();
         Box box=new Box(0.0d,0.0d,0.0d);
-        int Sum=points0.size();
+        long Sum=points.size();
+        if(Sum>300)
+        {
+            //return box;
+        }
         //如果少于三点，不能拟合圆，直接返回
         if(Sum<3)
         {
             return box;
         }
-
-        int i = 0;
+        int i;
         double X1 = 0;
         double Y1 = 0;
         double X2 = 0;
@@ -153,20 +190,20 @@ public class ImgProcess {
 
         for (i = 0; i < Sum; ++i)
         {
-            X1 += points0.get(i).x;
-            Y1 += points0.get(i).y;
-            X2 += points0.get(i).x*points0.get(i).x;
-            Y2 += points0.get(i).y*points0.get(i).y;
-            X3 += points0.get(i).x*points0.get(i).x*points0.get(i).x;
-            Y3 += points0.get(i).y*points0.get(i).y*points0.get(i).y;
-            X1Y1 += points0.get(i).x*points0.get(i).y;
-            X1Y2 += points0.get(i).x*points0.get(i).y*points0.get(i).y;
-            X2Y1 += points0.get(i).x*points0.get(i).x*points0.get(i).y;
+            X1 += points.get(i).x();
+            Y1 += points.get(i).y();
+            X2 += points.get(i).x()*points.get(i).x();
+            Y2 += points.get(i).y()*points.get(i).y();
+            X3 += points.get(i).x()*points.get(i).x()*points.get(i).x();
+            Y3 += points.get(i).y()*points.get(i).y()*points.get(i).y();
+            X1Y1 += points.get(i).x()*points.get(i).y();
+            X1Y2 += points.get(i).x()*points.get(i).y()*points.get(i).y();
+            X2Y1 += points.get(i).x()*points.get(i).x()*points.get(i).y();
         }
 
         double C, D, E, G, H, N;
         double a, b, c;
-        N = points0.size();
+        N = points.size();
         C = N*X2 - X1*X1;
         D = N*X1Y1 - X1*Y1;
         E = N*X3 + N*X1Y2 - (X2 + Y2)*X1;
@@ -185,42 +222,67 @@ public class ImgProcess {
     private Mat EdgeDetect(Mat edgeimg)
     {
         Mat edgeout=new Mat();
-        Imgproc.Canny(edgeimg,edgeout,100,250,3,false);
+        opencv_imgproc.Canny(edgeimg,edgeout,100,250,3,false);
         return edgeout;
     }
     //绘制圆
     private Mat PlotC(Vector<Box> circles,Mat midImage)
     {
-        Mat tempMat=new Mat();
-        tempMat=midImage;
+        Mat tempMat=new Mat(midImage);
+        //tempMat=midImage.clone();
         for(int i=0;i<circles.size();++i)
         {
-            Point center=new Point(circles.get(i).getX(),circles.get(i).getY());
+            Point center=new Point((int)Math.round(circles.get(i).getX()),(int)Math.round(circles.get(i).getY()));
             int radius=(int)circles.get(i).getR();
-            Imgproc.circle(tempMat,center,1,blue,-1,8,0);//画圆心
-            Imgproc.circle(tempMat,center,radius,red,1,8,0);//画圆轮廓
+            opencv_imgproc.circle(tempMat,center,1,blue,-1,8,0);//画圆心
+            opencv_imgproc.circle(tempMat,center,radius,red,1,8,0);//画圆轮廓
         }
-        return midImage;
+        return tempMat;
+    }
+    //绘制圆
+    private void PlotC(Vector<Box> circles,IplImage midImage)
+    {
+        for(int i=0;i<circles.size();++i)
+        {
+            CvPoint center=new CvPoint((int)Math.round(circles.get(i).getX()),(int)Math.round(circles.get(i).getY()));
+            int radius=(int)circles.get(i).getR();
+            opencv_imgproc.cvCircle(midImage,center,1,cvblue,-1,8,0);//画圆心
+            opencv_imgproc.cvCircle(midImage,center,radius,cvred,1,8,0);//画圆轮廓
+        }
     }
     //左右眼分开处理
     public void ProcessSeparate()
     {
-        Mat Rgryaimg=new Mat();
-        Mat Lgrayimg=new Mat();
-        Mat Redgeimg=new Mat();
-        Mat Ledgeimg=new Mat();
+        Mat Rgryaimg;
+        Mat Lgrayimg;
+        Mat Redgeimg;
+        Mat Ledgeimg;
         Mat Rhiberarchy=new Mat();
         Mat Lhiberarchy=new Mat();
         double temparea;
         boolean IsLeye=false;
         boolean IsReye=false;
 
+        CvMemStorage Lstorage=CvMemStorage.create();
+        CvMemStorage Rstorage=CvMemStorage.create();
+        CvSeq cvLcontour=new CvSeq(null);
+        CvSeq cvRcontour=new CvSeq(null);
+        CvSeq cvtempLcontour=new CvSeq(null);
+        CvSeq cvtempRcontour=new CvSeq(null);
+        CvSeq cvLcontourKeep=new CvSeq(null);
+        CvSeq cvRcontourKeep=new CvSeq(null);
+        IplImage LmatImage;
+        IplImage RmatImage;
+
         if(EyeNum==Tool.NOT_LEYE||EyeNum==Tool.ALL_EYE||EyeNum==Tool.VEDIO_EYE)
         {
             //此时有右眼
             Rgryaimg=GrayDetect(Reye);
             Redgeimg=EdgeDetect(Rgryaimg);
-            Imgproc.findContours(Redgeimg,Rcontours,Rhiberarchy,Imgproc.RETR_CCOMP,Imgproc.CHAIN_APPROX_NONE);
+            RmatImage=new IplImage(Redgeimg);
+            opencv_imgproc.cvFindContours(RmatImage,Rstorage,cvRcontour,Loader.sizeof(CvContour.class), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE);
+            cvRcontourKeep=new CvSeq(cvRcontour);
+            //opencv_imgproc.findContours(Redgeimg,Rcontours,Rhiberarchy,opencv_imgproc.RETR_CCOMP,opencv_imgproc.CHAIN_APPROX_NONE);
             IsReye=true;
         }
         if(EyeNum==Tool.NOT_REYE||EyeNum==Tool.ALL_EYE||EyeNum==Tool.VEDIO_EYE||EyeNum==Tool.VEDIO_ONLY_EYE)
@@ -228,76 +290,112 @@ public class ImgProcess {
             //此时有左眼
             Lgrayimg=GrayDetect(Leye);
             Ledgeimg=EdgeDetect(Lgrayimg);
-            Imgproc.findContours(Ledgeimg,Lcontours,Lhiberarchy,Imgproc.RETR_CCOMP,Imgproc.CHAIN_APPROX_NONE);
+            LmatImage=new IplImage(Ledgeimg);
+            opencv_imgproc.cvFindContours(LmatImage,Lstorage,cvLcontour,Loader.sizeof(CvContour.class), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE);
+            cvLcontourKeep=new CvSeq(cvLcontour);
+            //opencv_imgproc.findContours(Ledgeimg,Lcontours,Lhiberarchy,opencv_imgproc.RETR_CCOMP,opencv_imgproc.CHAIN_APPROX_NONE);
             IsLeye=true;
         }
-        if((Lcontours.size()>0)&&IsLeye)
+        if(!cvLcontour.isNull()&&cvLcontour.elem_size()>0&&IsLeye)
         {
             //左眼有轮廓
-            for(int i=0;i<Lcontours.size();++i)
+            while (cvLcontour != null && !cvLcontour.isNull())
             {
-                temparea=Imgproc.contourArea(Lcontours.get(i));
+                temparea=opencv_imgproc.cvContourArea(cvLcontour);
                 if(temparea>Lmaxarea)
                 {
                     Lmaxarea=temparea;
-                    LmaxAreaIndex=i;
+                    cvtempLcontour=cvLcontour;
                     continue;
                 }
+                cvLcontour=cvLcontour.h_next();
             }
-            //闭眼检测
-            Lrect=Imgproc.boundingRect(Lcontours.get(LmaxAreaIndex));
-            if((Lrect.width/(float)Lrect.height)<EyeRatio&&(Lrect.height/(float)Lrect.width)<EyeRatio&&Lrect.width>0&&Lrect.height>0)
+            if(!cvtempLcontour.isNull())
             {
-                Box Lbox=circleLeastFit(Lcontours.get(LmaxAreaIndex));//左眼拟合圆检测
-                if(Lbox.getR()!=0)
+                Vector<Point> leftPoints=new Vector<Point>();
+                for(int i=0;i<cvtempLcontour.total();++i)
                 {
-                    //如果半径不为0
-                    Lcircles.add(Lbox);
+                    Point p=new Point(opencv_core.cvGetSeqElem(cvtempLcontour,i));
+                    leftPoints.add(p);
+                }
+                //闭眼检测
+                Lrect=opencv_imgproc.cvBoundingRect(cvtempLcontour);
+                if((Lrect.width()/(float)Lrect.height())<EyeRatio&&(Lrect.height()/(float)Lrect.width())<EyeRatio&&Lrect.width()>0&&Lrect.height()>0)
+                {
+                    //此处有BUG
+                    Box Lbox=circleLeastFit(leftPoints);//左眼拟合圆检测
+                    if(Lbox.getR()!=0)
+                    {
+                        //如果半径不为0
+                        Lcircles.add(Lbox);
+                    }
                 }
             }
+
         }
-        if((Rcontours.size()>0)&&IsReye)
+        if(!cvRcontour.isNull()&&cvRcontour.elem_size()>0&&IsReye)
         {
             //右眼有轮廓
-            for(int i=0;i<Rcontours.size();++i)
+            while (cvRcontour!=null&&!cvRcontour.isNull())
             {
-                temparea=Imgproc.contourArea(Rcontours.get(i));
+                temparea=opencv_imgproc.cvContourArea(cvRcontour);
                 if(temparea>Rmaxarea)
                 {
                     Rmaxarea=temparea;
-                    RmaxAreaIndex=i;
+                    cvtempRcontour=cvRcontour;
                     continue;
                 }
+                cvRcontour=cvRcontour.h_next();
             }
-            //闭眼检测
-            Rrect=Imgproc.boundingRect(Rcontours.get(RmaxAreaIndex));
-            if((Rrect.width/(float)Rrect.height)<EyeRatio&&(Rrect.height/(float)Rrect.width)<EyeRatio&&Rrect.width>0&&Rrect.height>0)
+            if(!cvtempRcontour.isNull())
             {
-                Box Rbox=circleLeastFit(Rcontours.get(RmaxAreaIndex));//左眼拟合圆检测
-                if(Rbox.getR()!=0)
+                Vector<Point> rightPoints=new Vector<Point>();
+                for(int i=0;i<cvtempRcontour.total();++i)
                 {
-                    //如果半径不为0
-                    Rcircles.add(Rbox);
+                    Point p=new Point(opencv_core.cvGetSeqElem(cvtempRcontour,i));
+                    rightPoints.add(p);
+                }
+                //闭眼检测
+                Rrect=opencv_imgproc.cvBoundingRect(cvtempRcontour);
+                if((Rrect.width()/(float)Rrect.height())<EyeRatio&&(Rrect.height()/(float)Rrect.width())<EyeRatio&&Rrect.width()>0&&Rrect.height()>0)
+                {
+                    Box Rbox=circleLeastFit(rightPoints);//左眼拟合圆检测
+                    if(Rbox.getR()!=0)
+                    {
+                        //如果半径不为0
+                        Rcircles.add(Rbox);
+                    }
                 }
             }
         }
+
+        //Leye=OriginalLeftEye.clone();
+        //Leye=new Mat(OriginalLeftEye);
         if(Lcircles.size()>0)
         {
-            Leye=OriginalLeftEye.clone();
-            Leye=PlotC(Lcircles,Leye);//绘制左眼圆心和圆轮廓
+            //Leye=PlotC(Lcircles,Leye);//绘制左眼圆心和圆轮廓
+            PlotC(Lcircles,LeyeImage);
         }
+        //Reye=new Mat(OriginalRightEye);
         if(Rcircles.size()>0)
         {
-            Reye=OriginalRightEye.clone();
-            Reye=PlotC(Rcircles,Reye);//绘制右眼圆心和圆轮廓
+            //Reye=PlotC(Rcircles,Reye);//绘制右眼圆心和圆轮廓
+            PlotC(Rcircles,ReyeImage);
         }
-        if(Lcontours.size()>0)
+        if(IsLeye)
         {
-            Imgproc.drawContours(Leye,Lcontours,LmaxAreaIndex,green,1);
+            //opencv_imgproc.drawContours(Leye,Lcontours,LmaxAreaIndex,green);
+            opencv_imgproc.cvDrawContours(LeyeImage,cvLcontourKeep,cvgreen,cvgreen,1);
+            Leye=new Mat(LeyeImage);
         }
-        if(Rcontours.size()>0)
+        if(IsReye)
         {
-            Imgproc.drawContours(Reye,Rcontours,RmaxAreaIndex,green,1);
+            //opencv_imgproc.drawContours(Reye,Rcontours,RmaxAreaIndex,green);
+            opencv_imgproc.cvDrawContours(ReyeImage,cvRcontourKeep,cvgreen,cvgreen,1);
         }
+        Reye=new Mat(ReyeImage);
+        Leye=new Mat(LeyeImage);
+
+
     }
 }
