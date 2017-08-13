@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
@@ -778,15 +779,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 RightFrameMat.adjustROI(0,0,-150,150);
                 */
                 /*图像分割，借助Bitmap*/
-                LeftFrameMat=new Mat();
-                RightFrameMat=new Mat();
+                //LeftFrameMat=new Mat();
+                //RightFrameMat=new Mat();
+                AllEyeMat=matConverter.convertToMat(AllFrame);
+                Rect reye_box=new Rect(AllEyeMat.cols()/2,1,AllEyeMat.cols()/2-1,AllEyeMat.rows()-1);
+
                 Bitmap tempAllEyeBitmap=bitmapConverter.convert(AllFrame);
+
                 Bitmap leyeBitmap=Bitmap.createBitmap(tempAllEyeBitmap,0,0,tempAllEyeBitmap.getWidth()/2,tempAllEyeBitmap.getHeight());
-                Bitmap reyeBitmap=Bitmap.createBitmap(tempAllEyeBitmap,tempAllEyeBitmap.getWidth()/2,0,tempAllEyeBitmap.getWidth()/2-1,tempAllEyeBitmap.getHeight());
+                //Bitmap reyeBitmap=Bitmap.createBitmap(tempAllEyeBitmap,tempAllEyeBitmap.getWidth()/2,0,tempAllEyeBitmap.getWidth()/2-1,tempAllEyeBitmap.getHeight());
                 Frame leyeFrame=bitmapConverter.convert(leyeBitmap);
-                Frame reyeFrame=bitmapConverter.convert(reyeBitmap);
                 LeftFrameMat=matConverter.convertToMat(leyeFrame);
-                RightFrameMat=matConverter.convertToMat(reyeFrame);
+
+                RightFrameMat=new Mat(AllEyeMat,reye_box);
 
                 /*测试*/
 
