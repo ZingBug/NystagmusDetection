@@ -1,6 +1,9 @@
 <resources>
     <string name="app_name">Nystagmus</string>
     <string name="app_name_zh">眼震仪</string>
+    <string name="defalut">-</string>
+    <string name="normal">正常</string>
+    <string name="abnormal">末梢病变</string>
     <string name="website">www.hit.edu.cn</string>
     <string name="HIT">哈尔滨工业大学</string>
     <string name="navigation_drawer_open">open</string>

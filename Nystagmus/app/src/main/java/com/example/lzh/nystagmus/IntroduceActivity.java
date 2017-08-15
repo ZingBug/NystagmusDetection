@@ -20,14 +20,18 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
+import com.example.lzh.nystagmus.Utils.Calculate;
 import com.example.lzh.nystagmus.Utils.HttpUtil;
 import com.example.lzh.nystagmus.Utils.L;
 import com.example.lzh.nystagmus.Utils.T;
+import com.example.lzh.nystagmus.Utils.Tool;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Calendar;
+import java.util.Date;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -69,12 +73,24 @@ public class IntroduceActivity extends AppCompatActivity {
         //加载必应每日一图
 
         bingPicImg=(ImageView) findViewById(R.id.toolbar_image_view);
+
         if(!bingLoad&&isNetworkAvailable()&&ping())
         {
             //有网络连接并且连接到外网
-            bingLoad=true;
-            loadBingPic();
-            L.d("已更新图片");
+
+            Calendar now = Calendar.getInstance();
+            int data=now.get(Calendar.DATE);
+            int month=now.get(Calendar.MONTH)+1;
+            if(data==16&&month==8)
+            {
+                Glide.with(this).load(Tool.EggAddress).into(bingPicImg);
+            }
+            else
+            {
+                bingLoad=true;
+                loadBingPic();
+                L.d("已更新图片");
+            }
         }
         else
         {

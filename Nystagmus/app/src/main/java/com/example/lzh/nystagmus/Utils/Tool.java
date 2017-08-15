@@ -20,11 +20,19 @@ public class Tool {
     public static final String AddressLeftEyeDefault="http://192.168.1.22:8080/?action=stream?dummy=param.mjpg";//左眼网络地址
     public static final String AddressRightEyeDefault="http://192.168.1.22:8090/?action=stream?dummy=param.mjpg";//右眼网络地址
 
-    public static final int TimerSecondNum=30;//1s时间内定时器的间隔
-    public static final int HighTidePeriodSecond=3;//最大眼震反应期时间
+    public static final String EggAddress="http://img.ivsky.com/img/tupian/pre/201611/10/piaoliang_de_meigui-008.jpg";
 
-    public static String getPeriod(int startTime)
-    {
-        return startTime+"s-"+(startTime+HighTidePeriodSecond)+"s";
+    public static final int TimerSecondNum=30;//1s时间内定时器的间隔
+    public static final int HighTidePeriodSecond=10;//最大眼震反应期时间
+    public static final float SPVMaxValue=0.5f;//SPV最大临界值，超过这个值即眼震眩晕异常
+
+    public static String getPeriod(int startTime,int totalTime) {
+        if (startTime + HighTidePeriodSecond <= totalTime) {
+            return startTime + "s-" + (startTime + HighTidePeriodSecond) + "s";
+        }
+        else
+        {
+            return startTime + "s-" + (totalTime+1) + "s";
+        }
     }
 }

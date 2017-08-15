@@ -2,6 +2,10 @@
 ### Eye Pupil Localization OpenCV 3.20 for Android 
 ### 眼球震动定位检测
 
+### 2017年8月15日
+- 引入开源的FFMEG解码器，选用图像抓取函数FFmpegFrameGrabber，能够成功打开各种格式视频以及摄像头（不只是MJPEG）。
+- 相应引入javacv库，替换之前的官方opencv库，重写图像处理函数。
+- 增加诊断结果显示，测试结束后显示诊断结果。
 ### 2017年8月9日
 - 增加最大眼震反应期实时显示.
 ### 2017年8月8日

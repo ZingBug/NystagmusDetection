@@ -435,4 +435,26 @@ public class Calculate {
         }
         return tempMax;
     }
+    /*
+    * 用于判断眼睛是否病变
+    * return ture:正常  false:异常
+    * */
+    public boolean judgeDisease()
+    {
+        for(float tempSPV:LeyeDynamicPeriodSPV.values())
+        {
+            if(tempSPV>Tool.SPVMaxValue)
+            {
+                return false;
+            }
+        }
+        for(float tempSPV:ReyeDynamicPeriodSPV.values())
+        {
+            if(tempSPV>Tool.SPVMaxValue)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
 }

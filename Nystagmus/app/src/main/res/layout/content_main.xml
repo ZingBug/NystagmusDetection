@@ -31,14 +31,14 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="3">
+            android:layout_weight="4">
             <ImageView
                 android:id="@+id/lefteye_view"
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="match_parent"
                 android:scaleType="fitXY"
-                android:layout_marginLeft="40dp"
+                android:layout_marginLeft="30dp"
                 android:layout_marginRight="20dp"/>
             <ImageView
                 android:id="@+id/righteye_view"
@@ -47,12 +47,12 @@
                 android:layout_height="match_parent"
                 android:scaleType="fitXY"
                 android:layout_marginLeft="20dp"
-                android:layout_marginRight="40dp"/>
+                android:layout_marginRight="30dp"/>
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="10"
+            android:layout_weight="8"
             android:orientation="vertical">
             <com.github.mikephil.charting.charts.LineChart
                 android:id="@+id/xchart"
@@ -70,107 +70,145 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_weight="1.5"
             android:orientation="horizontal"
-            android:paddingTop="8dp"
-            android:paddingLeft="8dp"
-            android:paddingRight="8dp">
+            android:paddingTop="5dp"
+            android:paddingLeft="5dp"
+            android:paddingRight="5dp">
             <TextView
                 android:layout_width="0dp"
-                android:layout_weight="3"
+                android:layout_weight="4"
                 android:layout_height="match_parent"
-                android:text="左眼实时SPV："
-                android:gravity="center_vertical|right"/>
+                android:text="当前SPV值："
+                android:gravity="center_vertical|right"
+                android:textSize="18sp"/>
             <TextView
                 android:id="@+id/leyeRealtimeSPV"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="2"
                 android:gravity="center"
-                android:textColor="@color/black"/>
+                android:textColor="@color/black"
+                android:textSize="18sp"/>
             <TextView
                 android:layout_width="0dp"
-                android:layout_weight="3"
+                android:layout_weight="4"
                 android:layout_height="match_parent"
                 android:gravity="center_vertical|right"
-                android:text="右眼实时SPV："/>
+                android:text="当前SPV值："
+                android:textSize="18sp"/>
             <TextView
                 android:id="@+id/reyeRealtimeSPV"
                 android:layout_width="0dp"
                 android:layout_weight="2"
                 android:gravity="center"
                 android:layout_height="match_parent"
-                android:textColor="@color/black"/>
+                android:textColor="@color/black"
+                android:textSize="18sp"/>
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_weight="1.5"
             android:orientation="horizontal"
-            android:paddingTop="8dp"
-            android:paddingLeft="8dp"
-            android:paddingRight="8dp">
+            android:paddingTop="5dp"
+            android:paddingLeft="5dp"
+            android:paddingRight="5dp">
             <TextView
                 android:layout_width="0dp"
-                android:layout_weight="3"
+                android:layout_weight="4"
                 android:layout_height="match_parent"
-                android:text="左眼最大SPV："
-                android:gravity="center_vertical|right"/>
+                android:text="最大SPV值："
+                android:gravity="center_vertical|right"
+                android:textSize="18sp"/>
             <TextView
                 android:id="@+id/leyeMaxSPV"
                 android:layout_width="0dp"
                 android:layout_weight="2"
                 android:layout_height="match_parent"
                 android:gravity="center"
-                android:textColor="@color/black"/>
+                android:textColor="@color/black"
+                android:textSize="18sp"/>
             <TextView
                 android:layout_width="0dp"
-                android:layout_weight="3"
+                android:layout_weight="4"
                 android:layout_height="match_parent"
                 android:gravity="center_vertical|right"
-                android:text="右眼最大SPV："/>
+                android:text="最大SPV值："
+                android:textSize="18sp"/>
             <TextView
                 android:id="@+id/reyeMaxSPV"
                 android:layout_width="0dp"
                 android:layout_weight="2"
                 android:gravity="center"
                 android:layout_height="match_parent"
-                android:textColor="@color/black"/>
+                android:textColor="@color/black"
+                android:textSize="18sp"/>
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_weight="1.5"
             android:orientation="horizontal"
-            android:paddingTop="8dp"
-            android:paddingLeft="8dp"
-            android:paddingRight="8dp">
+            android:paddingTop="5dp"
+            android:paddingLeft="5dp"
+            android:paddingRight="5dp">
             <TextView
                 android:layout_width="0dp"
-                android:layout_weight="3"
-                android:layout_height="wrap_content"
+                android:layout_weight="4"
+                android:layout_height="match_parent"
                 android:gravity="center_vertical|right"
-                android:text="左眼震高潮期："/>
+                android:text="最大反应期："
+                android:textSize="18sp"/>
             <TextView
                 android:id="@+id/leyeHighperiod"
                 android:layout_width="0dp"
                 android:layout_weight="2"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:gravity="center"
-                android:textColor="@color/black"/>
+                android:textColor="@color/black"
+                android:textSize="18sp"/>
             <TextView
                 android:layout_width="0dp"
-                android:layout_weight="3"
-                android:layout_height="wrap_content"
-                android:text="右眼震高潮期："
-                android:gravity="center_vertical|right"/>
+                android:layout_weight="4"
+                android:layout_height="match_parent"
+                android:text="最大反应期："
+                android:gravity="center_vertical|right"
+                android:textSize="18sp"/>
             <TextView
                 android:id="@+id/reyeHighperiod"
                 android:layout_width="0dp"
                 android:layout_weight="2"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:gravity="center"
-                android:textColor="@color/black"/>
+                android:textColor="@color/black"
+                android:textSize="18sp"/>
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1.5"
+            android:orientation="horizontal"
+            android:paddingTop="2dp"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="2"
+                android:text="诊断结果："
+                android:gravity="center_vertical|right"
+                android:textSize="18sp"
+                android:textStyle="bold"/>
+            <TextView
+                android:id="@+id/diagnosticResult"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="3"
+                android:gravity="center"
+                android:textColor="@color/black"
+                android:textSize="18sp"
+                android:textStyle="bold"/>
         </LinearLayout>
     </LinearLayout>
     <com.getbase.floatingactionbutton.FloatingActionsMenu
@@ -196,7 +234,7 @@
             app:fab_icon="@drawable/stopplay"
             app:fab_colorNormal="@color/menu_cyanblue"
             app:fab_size="mini"
-            app:fab_title="停止播放"/>
+            app:fab_title="停止测试"/>
         <com.getbase.floatingactionbutton.FloatingActionButton
             android:id="@+id/menu_startplay"
             android:layout_width="wrap_content"
@@ -204,7 +242,7 @@
             app:fab_icon="@drawable/startplay"
             app:fab_colorNormal="@color/menu_blue"
             app:fab_size="mini"
-            app:fab_title="开始播放" />
+            app:fab_title="开始测试" />
         <com.getbase.floatingactionbutton.FloatingActionButton
             android:id="@+id/menu_opencamera"
             android:layout_width="wrap_content"

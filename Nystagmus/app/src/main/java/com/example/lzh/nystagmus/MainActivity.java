@@ -78,18 +78,13 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import static android.R.attr.breadCrumbShortTitle;
-import static android.R.attr.data;
-import static android.R.attr.factor;
-import static android.R.attr.flipInterval;
-import static android.R.attr.manageSpaceActivity;
-import static android.R.attr.x;
-import static android.R.attr.y;
 import static android.os.Build.VERSION_CODES.N;
+import static com.example.lzh.nystagmus.R.id.diagnosticResult;
 import static com.example.lzh.nystagmus.R.id.start;
 import static com.example.lzh.nystagmus.R.id.toolbar;
 import static com.example.lzh.nystagmus.R.id.transition_current_scene;
 import static com.example.lzh.nystagmus.Utils.Tool.AddressRightEye;
+import static com.example.lzh.nystagmus.Utils.Tool.getPeriod;
 import static org.bytedeco.javacpp.opencv_core.CV_SUBMAT_FLAG;
 import static org.bytedeco.javacpp.opencv_core.IPL_DEPTH_8U;
 import static org.bytedeco.javacpp.opencv_core.cvSize;
@@ -118,7 +113,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private AndroidFrameConverter bitmapConverter = new  AndroidFrameConverter();//Frame转bitmap
     private boolean isVideoOpen=false;
 
-    private Mat frame;
     private Mat LeftFrameMat;
     private Mat RightFrameMat;
     private Bitmap LeftView;
@@ -131,7 +125,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Message ChartMessage;
     private boolean IsTimerRun=false;
 
-    private int EyeNum;//眼睛数目
+    private int EyeNum=Tool.NOT_ALLEYE;//眼睛数目
     private boolean IsLeyeCenter=false;//用于判断左眼是否确定初始位置
     private boolean IsReyeCenter=false;//用于判断右眼是否确定初始位置
     private Box LeyeCenter=new Box();//用于保存左眼的初始位置
@@ -157,6 +151,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView ReyeHighperiod;
     private DecimalFormat df;//数据格式,float转string保留两位小数
 
+    /*诊断相关*/
+    private TextView DiagnosticResult;
+
     /*悬浮菜单按钮*/
     private FloatingActionsMenu menuChange;
     /*测试用*/
@@ -175,6 +172,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         ReyeMaxSPV=(TextView) findViewById(R.id.reyeMaxSPV);
         LeyeHighperiod=(TextView) findViewById(R.id.leyeHighperiod);
         ReyeHighperiod=(TextView) findViewById(R.id.reyeHighperiod);
+        DiagnosticResult=(TextView) findViewById(diagnosticResult);
         /*初始化设置为0*/
         LeyeRealtimeSPV.setText("0");
         ReyeRealtimeSPV.setText("0");
@@ -182,6 +180,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         ReyeMaxSPV.setText("0");
         LeyeHighperiod.setText("0s");
         ReyeHighperiod.setText("0s");
+        DiagnosticResult.setText(R.string.defalut);
 
         df= new DecimalFormat("##.##");//数据格式,float转string保留两位小数
 
@@ -243,8 +242,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         chart_x=(LineChart)findViewById(R.id.xchart);
         chart_y=(LineChart)findViewById(R.id.ychart);
 
-        initialChart(chart_x,"X坐标");//初始化波形图
-        initialChart(chart_y,"Y坐标");//初始化波形图
+        initialChart(chart_x,"水平位置");//初始化波形图
+        initialChart(chart_y,"垂直位置");//初始化波形图
 
         pref=getSharedPreferences("CameraAddress",MODE_PRIVATE);
         Tool.AddressLeftEye=pref.getString("LeftCameraAddress",Tool.AddressLeftEye);
@@ -316,14 +315,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
     private void openCamera()
     {
-        if(IsTimerRun)
-        {
-            //如果正在处理视频，则立即停止当前定时器
-            IsTimerRun = false;
-            timer.cancel();
-        }
         EyeNum=Tool.ALL_EYE;
-
         vacpLeft=new FFmpegFrameGrabber(Tool.AddressLeftEye);
         try {
             vacpLeft.start();
@@ -349,56 +341,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             else
             {
                 EyeNum=Tool.NOT_ALLEYE;
-                T.showLong(this,"双眼全部连接失败");
+                T.showShort(this,"双眼全部连接失败");
                 L.d("双眼全部连接失败");
                 return;
             }
         }
-        if(EyeNum==Tool.NOT_REYE)
-        {
-            //如果没有右眼
-            RightFrameMat=new Mat();
-            TempView=BitmapFactory.decodeResource(getResources(),R.drawable.novideo);
-            Frame TempFrame=bitmapConverter.convert(TempView);
-            RightFrameMat=matConverter.convertToMat(TempFrame);
-        }
-        if(EyeNum==Tool.NOT_LEYE)
-        {
-            //如果没有左眼
-            LeftFrameMat=new Mat();
-            TempView=BitmapFactory.decodeResource(getResources(),R.drawable.novideo);
-            Frame TempFrame=bitmapConverter.convert(TempView);
-            LeftFrameMat=matConverter.convertToMat(TempFrame);
-        }
-
-        clearEntey(chart_x);
-        clearEntey(chart_y);
-        IsLeyeCenter=false;
-        IsReyeCenter=false;
-        LeyeCenter=new Box();
-        ReyeCenter=new Box();
-        FrameNum=0;
-        calNum=0;
-        calculate=new Calculate();
-
-        timer=new Timer();
-        timer.schedule(new readFarme(),50,10);
-        message=new Message();
-        message.obj="视频开始播放";
-        ToastHandle.sendMessage(message);
-        IsTimerRun=true;
-
-        LeyeRealtimeSPV.setText("0");
-        ReyeRealtimeSPV.setText("0");
-        LeyeMaxSPV.setText("0");
-        ReyeMaxSPV.setText("0");
-        LeyeHighperiod.setText("0s");
-        ReyeHighperiod.setText("0s");
+        isVideoOpen=false;//不在加载本地视频
     }
     private void openVideo()
     {
         if(IsTimerRun)
         {
+            IsTimerRun=false;
             timer.cancel();
         }
         Intent intent=new Intent("android.intent.action.GET_CONTENT");
@@ -408,6 +362,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
     private void startPlay()
     {
+        if(!(EyeNum==Tool.NOT_LEYE||EyeNum==Tool.NOT_REYE||EyeNum==Tool.ALL_EYE||isVideoOpen))
+        {
+            message=new Message();
+            message.obj="无视频源";
+            L.d("无视频源");
+            ToastHandle.sendMessage(message);
+            return;
+        }
         if(IsTimerRun)
         {
             //如果正在处理视频，则立即停止当前定时器
@@ -416,6 +378,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
         if(isVideoOpen)
         {
+            //本地视频
             isVideoOpen=false;
             Frame tempFrame=null;
             try {
@@ -448,41 +411,58 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Frame TempFrame=bitmapConverter.convert(TempView);
                 RightFrameMat=matConverter.convertToMat(TempFrame);
             }
-            timer=new Timer();
 
-            /*下面是参数初始化*/
-            clearEntey(chart_x);
-            clearEntey(chart_y);
-            IsLeyeCenter=false;
-            IsReyeCenter=false;
-            LeyeCenter=new Box();
-            ReyeCenter=new Box();
-            FrameNum=0;
-
-            timer.schedule(new readFarme(),50,10);
-            L.d("开启定时器,视频开始播放");
-            calculate=new Calculate();
-            calNum=0;//1s计算一次
-            secondTime=0;//0s
-            message=new Message();
-            message.obj="视频开始播放";
-            ToastHandle.sendMessage(message);
-            IsTimerRun=true;
-
-            LeyeRealtimeSPV.setText("0");
-            ReyeRealtimeSPV.setText("0");
-            LeyeMaxSPV.setText("0");
-            ReyeMaxSPV.setText("0");
-            LeyeHighperiod.setText("0s");
-            ReyeHighperiod.setText("0s");
         }
         else
         {
-            message=new Message();
-            message.obj="未打开本地视频";
-            L.d("未打开本地视频");
-            ToastHandle.sendMessage(message);
+            //在线视频
+            if(EyeNum==Tool.NOT_REYE)
+            {
+                //如果没有右眼
+                RightFrameMat=new Mat();
+                TempView=BitmapFactory.decodeResource(getResources(),R.drawable.novideo);
+                Frame TempFrame=bitmapConverter.convert(TempView);
+                RightFrameMat=matConverter.convertToMat(TempFrame);
+            }
+            if(EyeNum==Tool.NOT_LEYE)
+            {
+                //如果没有左眼
+                LeftFrameMat=new Mat();
+                TempView=BitmapFactory.decodeResource(getResources(),R.drawable.novideo);
+                Frame TempFrame=bitmapConverter.convert(TempView);
+                LeftFrameMat=matConverter.convertToMat(TempFrame);
+            }
         }
+
+        /*下面是参数初始化*/
+        clearEntey(chart_x);
+        clearEntey(chart_y);
+        IsLeyeCenter=false;
+        IsReyeCenter=false;
+        LeyeCenter=new Box();
+        ReyeCenter=new Box();
+        FrameNum=0;
+
+        timer=new Timer();
+        timer.schedule(new readFarme(),50,10);
+        L.d("视频开始播放");
+        calculate=new Calculate();
+        calNum=0;//1s计算一次
+        secondTime=0;//0s
+        message=new Message();
+        message.obj="视频开始播放";
+        ToastHandle.sendMessage(message);
+        IsTimerRun=true;
+
+        LeyeRealtimeSPV.setText("0");
+        ReyeRealtimeSPV.setText("0");
+        LeyeMaxSPV.setText("0");
+        ReyeMaxSPV.setText("0");
+        LeyeHighperiod.setText("0s");
+        ReyeHighperiod.setText("0s");
+        DiagnosticResult.setText(R.string.defalut);
+        DiagnosticResult.setTextColor(MainActivity.this.getResources().getColor(R.color.black));
+
     }
     private void stopPlay()
     {
@@ -490,13 +470,30 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         {
             IsTimerRun=false;
             timer.cancel();
+            /*诊断结果*/
+            final boolean diagnosticResult=calculate.judgeDisease();//诊断结果
+            runOnUiThread(new Runnable(){
+                @Override
+                public void run(){
+                    if(diagnosticResult)
+                    {
+                        DiagnosticResult.setText(R.string.normal);
+                    }
+                    else
+                    {
+                        DiagnosticResult.setText(R.string.abnormal);
+                        DiagnosticResult.setTextColor(MainActivity.this.getResources().getColor(R.color.red));
+                    }
+                }
+            });
             L.d("手动关闭视频播放，定时器关闭");
             message=new Message();
             message.obj="视频播放结束";
             ToastHandle.sendMessage(message);
-            if(capture!=null)
+            if(EyeNum==Tool.VEDIO_EYE||EyeNum==Tool.VEDIO_ONLY_EYE)
             {
                 try {
+                    capture.stop();
                     capture.release();
                 }
                 catch (org.bytedeco.javacv.FrameGrabber.Exception e)
@@ -504,9 +501,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     L.d("释放本地视频");
                 }
             }
-            if(vacpLeft!=null)
+
+            if(EyeNum==Tool.ALL_EYE||EyeNum==Tool.NOT_REYE)
             {
                 try {
+                    vacpLeft.stop();
                     vacpLeft.release();
                 }
                 catch (org.bytedeco.javacv.FrameGrabber.Exception e)
@@ -514,9 +513,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     L.d("释放左眼连接");
                 }
             }
-            if(vacpRight!=null)
+            if(EyeNum==Tool.ALL_EYE||EyeNum==Tool.NOT_LEYE)
             {
                 try {
+                    vacpRight.stop();
                     vacpRight.release();
                 }
                 catch (org.bytedeco.javacv.FrameGrabber.Exception e)
@@ -558,7 +558,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             ArrayList<Entry> values=new ArrayList<>();
             values.add(new Entry(0,0));//初始设置为(0,0)坐标
 
-            LineDataSet set=new LineDataSet(values,i==0?"Left":"Right");
+            LineDataSet set=new LineDataSet(values,i==0?"左眼":"右眼");
             set.setMode(set.getMode()==LineDataSet.Mode.CUBIC_BEZIER?LineDataSet.Mode.LINEAR:LineDataSet.Mode.CUBIC_BEZIER);//设置为平滑曲线
             set.setDrawCircles(false);//取消显示坐标点圆圈
             set.setDrawValues(false);//取消显示坐标值
@@ -584,7 +584,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 add_chart.invalidate();
             }
         });
-
     }
     private void clearEntey(LineChart chart)
     {
@@ -596,7 +595,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             ArrayList<Entry> values=new ArrayList<>();
             values.add(new Entry(0,0));//初始设置为(0,0)坐标
 
-            LineDataSet set=new LineDataSet(values,i==0?"Left":"Right");
+            LineDataSet set=new LineDataSet(values,i==0?"左眼":"右眼");
             set.setMode(set.getMode()==LineDataSet.Mode.CUBIC_BEZIER?LineDataSet.Mode.LINEAR:LineDataSet.Mode.CUBIC_BEZIER);//设置为平滑曲线
             set.setDrawCircles(false);//取消显示坐标点圆圈
             set.setDrawValues(false);//取消显示坐标值
@@ -637,7 +636,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     T.showShort(this,"视频加载成功");
                     L.d("视频加载成功");
                     isVideoOpen=true;
-
+                    startPlay();//开始播放
                 }
                 break;
             }
@@ -734,13 +733,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     final float leyeRealtime=calculate.getRealTimeSPV(secondTime,true);
                     final float leyeMax=calculate.getMaxSPV(true);
                     final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
+                    final String period_L=getPeriod(maxSecond_L,secondTime);
                     //强制在UI线程下更新
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
                             LeyeRealtimeSPV.setText(df.format(leyeRealtime));
                             LeyeMaxSPV.setText(df.format(leyeMax));
-                            LeyeHighperiod.setText(Tool.getPeriod(maxSecond_L));
+                            LeyeHighperiod.setText(period_L);
                         }
                     });
                 }
@@ -807,6 +807,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     final float reyeMax=calculate.getMaxSPV(false);
                     final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
                     final int maxSecond_R=calculate.getHighTidePeriod(false);//右眼
+                    final String period_L=getPeriod(maxSecond_L,secondTime);
+                    final String period_R=getPeriod(maxSecond_R,secondTime);
                     //强制在UI线程下更新
                     runOnUiThread(new Runnable() {
                         @Override
@@ -815,8 +817,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             ReyeRealtimeSPV.setText(df.format(reyeRealtime));
                             LeyeMaxSPV.setText(df.format(leyeMax));
                             ReyeMaxSPV.setText(df.format(reyeMax));
-                            LeyeHighperiod.setText(Tool.getPeriod(maxSecond_L));
-                            ReyeHighperiod.setText(Tool.getPeriod(maxSecond_R));
+                            LeyeHighperiod.setText(period_L);
+                            ReyeHighperiod.setText(period_R);
                         }
                     });
                 }
@@ -835,13 +837,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         final float leyeRealtime=calculate.getRealTimeSPV(secondTime,true);
                         final float leyeMax=calculate.getMaxSPV(true);
                         final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
+                        final String period_L=getPeriod(maxSecond_L,secondTime);
                         //强制在UI线程下更新
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 LeyeRealtimeSPV.setText(df.format(leyeRealtime));
                                 LeyeMaxSPV.setText(df.format(leyeMax));
-                                LeyeHighperiod.setText(Tool.getPeriod(maxSecond_L));
+                                LeyeHighperiod.setText(period_L);
                             }
                         });
                     }
@@ -852,13 +855,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         final float reyeRealtime=calculate.getRealTimeSPV(secondTime,false);
                         final float reyeMax=calculate.getMaxSPV(false);
                         final int maxSecond_R=calculate.getHighTidePeriod(false);//右眼
+                        final String period_R=getPeriod(maxSecond_R,secondTime);
                         //强制在UI线程下更新
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 ReyeRealtimeSPV.setText(df.format(reyeRealtime));
                                 ReyeMaxSPV.setText(df.format(reyeMax));
-                                ReyeHighperiod.setText(Tool.getPeriod(maxSecond_R));
+                                ReyeHighperiod.setText(period_R);
                             }
                         });
                     }
@@ -928,9 +932,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void videoStop(int eye)//0代表左眼，1代表右眼，2代表双眼
     {
         timer.cancel();
-
         IsTimerRun=false;
-        if(capture!=null)
+        /*诊断结果*/
+        final boolean diagnosticResult=calculate.judgeDisease();//诊断结果
+        runOnUiThread(new Runnable(){
+            @Override
+            public void run(){
+                if(diagnosticResult)
+                {
+                    DiagnosticResult.setText(R.string.normal);
+                }
+                else
+                {
+                    DiagnosticResult.setText(R.string.abnormal);
+                    DiagnosticResult.setTextColor(MainActivity.this.getResources().getColor(R.color.red));
+                }
+            }
+        });
+        if(EyeNum==Tool.VEDIO_ONLY_EYE||EyeNum==Tool.VEDIO_EYE)
         {
             try {
                 capture.release();
@@ -943,7 +962,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             message.obj="视频播放结束";//代表视频播放结束
             ToastHandle.sendMessage(message);
         }
-        if(vacpLeft!=null&&eye==0)
+        if(eye==0&&(EyeNum==Tool.ALL_EYE||EyeNum==Tool.NOT_REYE))
         {
             try {
                 vacpLeft.release();
@@ -956,7 +975,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             message.obj="左眼连接结束";//代表视频播放结束
             ToastHandle.sendMessage(message);
         }
-        if(vacpRight!=null&&eye==1)
+        if(eye==1&&(EyeNum==Tool.ALL_EYE||EyeNum==Tool.NOT_LEYE))
         {
             try {
                 vacpRight.release();
@@ -969,36 +988,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             message.obj="右眼连接结束";//代表视频播放结束
             ToastHandle.sendMessage(message);
         }
-
-        /*后期处理,用来判断高潮期*/
-        ++secondTime;
-
-        if(eye==0||eye==2)
-        {
-            //左眼
-            calculate.processLeyeX(secondTime);
-            final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    LeyeHighperiod.setText(Tool.getPeriod(maxSecond_L));
-                }
-            });
-        }
-        if(eye==1||eye==2)
-        {
-            //右眼
-            calculate.processReyeX(secondTime);
-            final int maxSecond_R=calculate.getHighTidePeriod(false);//右眼
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    ReyeHighperiod.setText(Tool.getPeriod(maxSecond_R));
-                }
-            });
-        }
     }
-
     Handler ViewHandle=new Handler()//用以实时刷新显示左右眼,异步消息处理
     {
         @Override
@@ -1014,7 +1004,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         public void handleMessage(Message msg)
         {
-            T.showLong(MainActivity.this,msg.obj.toString());
+            T.showShort(MainActivity.this,msg.obj.toString());
             super.handleMessage(msg);
         }
     };
