@@ -3,12 +3,14 @@ package com.example.lzh.nystagmus;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
@@ -91,6 +93,15 @@ import static org.bytedeco.javacpp.opencv_core.cvSize;
 import static org.bytedeco.javacpp.opencv_videoio.CAP_MODE_YUYV;
 import static org.bytedeco.javacpp.opencv_videoio.CV_CAP_FFMPEG;
 
+import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
+import android.util.Log;
+import android.provider.Contacts.People;
+
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
 
     private ImageView imageView_leye;
@@ -110,6 +121,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Frame tempLeftFrame;
     private Frame tempRightFrame;
     private static OpenCVFrameConverter.ToIplImage matConverter = new OpenCVFrameConverter.ToIplImage();//Mat转Frame
+    private static OpenCVFrameConverter.ToIplImage matConverter_L = new OpenCVFrameConverter.ToIplImage();//Mat转Frame
+    private static OpenCVFrameConverter.ToIplImage matConverter_R = new OpenCVFrameConverter.ToIplImage();//Mat转Frame
     private AndroidFrameConverter bitmapConverter = new  AndroidFrameConverter();//Frame转bitmap
     private boolean isVideoOpen=false;
 
@@ -187,6 +200,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         NavigationView navView=(NavigationView)findViewById(R.id.nav_view);
         Toolbar toolbar=(Toolbar)findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
 
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(this, mDrawerLayout, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
         mDrawerLayout.setDrawerListener(toggle);
@@ -675,7 +689,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     videoStop(1);
                     return;
                 }
-                RightFrameMat=matConverter.convertToMat(RightFrame);
+                RightFrameMat=new Mat();
+                RightFrameMat=matConverter_R.convertToMat(RightFrame);
             }
             if(EyeNum==Tool.NOT_REYE||EyeNum==Tool.ALL_EYE)
             {
@@ -698,8 +713,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     videoStop(0);
                     return;
                 }
-                LeftFrameMat=matConverter.convertToMat(LeftFrame);
-
+                LeftFrameMat=new Mat();
+                LeftFrameMat=matConverter_L.convertToMat(LeftFrame);
             }
             if(EyeNum==Tool.VEDIO_ONLY_EYE)
             {

@@ -83,7 +83,11 @@ public class IntroduceActivity extends AppCompatActivity {
             int month=now.get(Calendar.MONTH)+1;
             if(data==16&&month==8)
             {
-                Glide.with(this).load(Tool.EggAddress).into(bingPicImg);
+                Glide.with(this).load(Tool.EggRoseAddress).into(bingPicImg);
+            }
+            else if (data==11&month==9)
+            {
+                Glide.with(this).load(Tool.EggCakeAddress).into(bingPicImg);
             }
             else
             {
