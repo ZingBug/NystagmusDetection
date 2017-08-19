@@ -70,9 +70,8 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1.5"
+            android:layout_weight="1.2"
             android:orientation="horizontal"
-            android:paddingTop="5dp"
             android:paddingLeft="5dp"
             android:paddingRight="5dp">
             <TextView
@@ -109,9 +108,8 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1.5"
+            android:layout_weight="1.2"
             android:orientation="horizontal"
-            android:paddingTop="5dp"
             android:paddingLeft="5dp"
             android:paddingRight="5dp">
             <TextView
@@ -148,9 +146,8 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1.5"
+            android:layout_weight="1.2"
             android:orientation="horizontal"
-            android:paddingTop="5dp"
             android:paddingLeft="5dp"
             android:paddingRight="5dp">
             <TextView
@@ -187,6 +184,44 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
+            android:layout_weight="1.2"
+            android:orientation="horizontal"
+            android:paddingLeft="5dp"
+            android:paddingRight="5dp">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_weight="4"
+                android:layout_height="match_parent"
+                android:text="眼震方向："
+                android:gravity="center_vertical|right"
+                android:textSize="18sp"/>
+            <TextView
+                android:id="@+id/leyeDirection"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="2"
+                android:gravity="center"
+                android:textColor="@color/black"
+                android:textSize="18sp"/>
+            <TextView
+                android:layout_width="0dp"
+                android:layout_weight="4"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical|right"
+                android:text="眼震方向："
+                android:textSize="18sp"/>
+            <TextView
+                android:id="@+id/reyeDirection"
+                android:layout_width="0dp"
+                android:layout_weight="2"
+                android:gravity="center"
+                android:layout_height="match_parent"
+                android:textColor="@color/black"
+                android:textSize="18sp"/>
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
             android:layout_weight="1.5"
             android:orientation="horizontal"
             android:paddingTop="2dp"
@@ -197,14 +232,14 @@
                 android:layout_height="match_parent"
                 android:layout_weight="2"
                 android:text="诊断结果："
-                android:gravity="center_vertical|right"
+                android:gravity="center_vertical|left"
                 android:textSize="18sp"
                 android:textStyle="bold"/>
             <TextView
                 android:id="@+id/diagnosticResult"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_weight="3"
+                android:layout_weight="5"
                 android:gravity="center"
                 android:textColor="@color/black"
                 android:textSize="18sp"

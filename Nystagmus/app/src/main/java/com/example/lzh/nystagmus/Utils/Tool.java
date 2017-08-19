@@ -26,14 +26,6 @@ public class Tool {
     public static final int TimerSecondNum=30;//1s时间内定时器的间隔
     public static final int HighTidePeriodSecond=10;//最大眼震反应期时间
     public static final float SPVMaxValue=0.5f;//SPV最大临界值，超过这个值即眼震眩晕异常
+    public static final float SPVConversionRatio=10f;//在计算波形斜率时所用的换算比例
 
-    public static String getPeriod(int startTime,int totalTime) {
-        if (startTime + HighTidePeriodSecond <= totalTime) {
-            return startTime + "s-" + (startTime + HighTidePeriodSecond) + "s";
-        }
-        else
-        {
-            return startTime + "s-" + (totalTime+1) + "s";
-        }
-    }
 }

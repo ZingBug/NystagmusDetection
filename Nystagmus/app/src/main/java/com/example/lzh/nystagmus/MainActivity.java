@@ -86,8 +86,8 @@ import static com.example.lzh.nystagmus.R.id.diagnosticResult;
 import static com.example.lzh.nystagmus.R.id.start;
 import static com.example.lzh.nystagmus.R.id.toolbar;
 import static com.example.lzh.nystagmus.R.id.transition_current_scene;
+import static com.example.lzh.nystagmus.Utils.Calculate.getPeriod;
 import static com.example.lzh.nystagmus.Utils.Tool.AddressRightEye;
-import static com.example.lzh.nystagmus.Utils.Tool.getPeriod;
 import static org.bytedeco.javacpp.opencv_core.CV_SUBMAT_FLAG;
 import static org.bytedeco.javacpp.opencv_core.IPL_DEPTH_8U;
 import static org.bytedeco.javacpp.opencv_core.cvSize;
@@ -167,6 +167,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     /*诊断相关*/
     private TextView DiagnosticResult;
+    private TextView LeyeDirectionResult;
+    private TextView ReyeDirectionResult;
 
     /*悬浮菜单按钮*/
     private FloatingActionsMenu menuChange;
@@ -188,7 +190,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         ReyeMaxSPV=(TextView) findViewById(R.id.reyeMaxSPV);
         LeyeHighperiod=(TextView) findViewById(R.id.leyeHighperiod);
         ReyeHighperiod=(TextView) findViewById(R.id.reyeHighperiod);
-        DiagnosticResult=(TextView) findViewById(diagnosticResult);
+        DiagnosticResult=(TextView) findViewById(R.id.diagnosticResult);
+        LeyeDirectionResult=(TextView) findViewById(R.id.leyeDirection);
+        ReyeDirectionResult=(TextView) findViewById(R.id.reyeDirection);
+
         /*初始化设置为0*/
         LeyeRealtimeSPV.setText("0");
         ReyeRealtimeSPV.setText("0");
@@ -197,6 +202,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         LeyeHighperiod.setText("0s");
         ReyeHighperiod.setText("0s");
         DiagnosticResult.setText(R.string.defalut);
+        LeyeDirectionResult.setText(R.string.defalut);
+        ReyeDirectionResult.setText(R.string.defalut);
 
         df= new DecimalFormat("##.##");//数据格式,float转string保留两位小数
 
@@ -400,7 +407,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         FrameNum=0;
 
         timer=new Timer();
-        timer.schedule(new readFarme(),50,10);
+        timer.schedule(new readFarme(),50,5);
         L.d("视频开始播放");
         calculate=new Calculate();
         calNum=0;//1s计算一次
@@ -417,6 +424,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         LeyeHighperiod.setText("0s");
         ReyeHighperiod.setText("0s");
         DiagnosticResult.setText(R.string.defalut);
+        LeyeDirectionResult.setText(R.string.defalut);
+        ReyeDirectionResult.setText(R.string.defalut);
         DiagnosticResult.setTextColor(MainActivity.this.getResources().getColor(R.color.black));
     }
     private void openVideo()
@@ -469,7 +478,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             IsTest=false;
             timer.cancel();
             /*诊断结果*/
-            final boolean diagnosticResult=calculate.judgeDisease();//诊断结果
+            final boolean diagnosticResult=calculate.judgeDiagnosis();//诊断结果
+
             runOnUiThread(new Runnable(){
                 @Override
                 public void run(){
@@ -481,6 +491,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     {
                         DiagnosticResult.setText(R.string.abnormal);
                         DiagnosticResult.setTextColor(MainActivity.this.getResources().getColor(R.color.red));
+                    }
+                    /*快相方向*/
+                    if(calculate.judegeEye(true))
+                    {
+                        //左眼有处理结果
+                        boolean leyeDir=calculate.judgeFastPhase(true);
+                        LeyeDirectionResult.setText(leyeDir? R.string.left:R.string.right);
+                    }
+                    if(calculate.judegeEye(false))
+                    {
+                        //右眼有处理结果
+                        boolean reyeDir=calculate.judgeFastPhase(false);
+                        ReyeDirectionResult.setText(reyeDir?R.string.left:R.string.right);
                     }
                 }
             });
@@ -695,6 +718,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     LeyeHighperiod.setText("0s");
                     ReyeHighperiod.setText("0s");
                     DiagnosticResult.setText(R.string.defalut);
+                    LeyeDirectionResult.setText(R.string.defalut);
+                    ReyeDirectionResult.setText(R.string.defalut);
                     DiagnosticResult.setTextColor(MainActivity.this.getResources().getColor(R.color.black));
 
                     IsTest=true;
@@ -720,9 +745,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             {
                 //此时有右眼
                 RightFrame=new Frame();
+                //IplImage RightImage=new IplImage();
                 RightFrame=null;
                 try {
-                    RightFrame=vacpRight.grabFrame().clone();
+                    RightFrame=vacpRight.grabImage().clone();
                     if(RightFrame==null)
                     {
                         //视频播放结束
@@ -745,7 +771,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 LeftFrame=new Frame();
                 LeftFrame=null;
                 try {
-                    LeftFrame=vacpLeft.grabFrame().clone();
+                    LeftFrame=vacpLeft.grabImage().clone();
                     if(LeftFrame==null)
                     {
                         //视频播放结束
@@ -976,7 +1002,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         IsTimerRun=false;
         IsTest=false;
         /*诊断结果*/
-        final boolean diagnosticResult=calculate.judgeDisease();//诊断结果
+        final boolean diagnosticResult=calculate.judgeDiagnosis();//诊断结果
+
         runOnUiThread(new Runnable(){
             @Override
             public void run(){
@@ -988,6 +1015,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 {
                     DiagnosticResult.setText(R.string.abnormal);
                     DiagnosticResult.setTextColor(MainActivity.this.getResources().getColor(R.color.red));
+                }
+                /*快相方向*/
+                if(calculate.judegeEye(true))
+                {
+                    //左眼有处理结果
+                    boolean leyeDir=calculate.judgeFastPhase(true);
+                    LeyeDirectionResult.setText(leyeDir? R.string.left:R.string.right);
+                }
+                if(calculate.judegeEye(false))
+                {
+                    //右眼有处理结果
+                    boolean reyeDir=calculate.judgeFastPhase(false);
+                    ReyeDirectionResult.setText(reyeDir?R.string.left:R.string.right);
                 }
             }
         });
@@ -1004,34 +1044,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             message.obj="视频播放结束";//代表视频播放结束
             ToastHandle.sendMessage(message);
         }
-        /*
-        if(eye==0&&(EyeNum==Tool.ALL_EYE||EyeNum==Tool.NOT_REYE))
-        {
-            try {
-                vacpLeft.release();
-            }
-            catch (org.bytedeco.javacv.FrameGrabber.Exception e)
-            {
-                L.d("左眼连接异常关闭");
-            }
-            message=new Message();
-            message.obj="左眼连接结束";//代表视频播放结束
-            ToastHandle.sendMessage(message);
-        }
-        if(eye==1&&(EyeNum==Tool.ALL_EYE||EyeNum==Tool.NOT_LEYE))
-        {
-            try {
-                vacpRight.release();
-            }
-            catch (org.bytedeco.javacv.FrameGrabber.Exception e)
-            {
-                L.d("右眼连接异常关闭");
-            }
-            message=new Message();
-            message.obj="右眼连接结束";//代表视频播放结束
-            ToastHandle.sendMessage(message);
-        }
-        */
     }
     Handler ViewHandle=new Handler()//用以实时刷新显示左右眼,异步消息处理
     {

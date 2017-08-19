@@ -17,6 +17,7 @@ import java.util.Vector;
 import static android.R.attr.endX;
 import static android.R.attr.flipInterval;
 import static android.R.attr.max;
+import static com.example.lzh.nystagmus.Utils.Tool.HighTidePeriodSecond;
 
 /**
  * Created by LZH on 2017/8/4.
@@ -28,14 +29,16 @@ public class Calculate {
     private int FrameNum;//视频总帧数
     private LinkedList<Float> LeyeX;//左眼x轴坐标集合,链表易于频繁数据操作
     private LinkedList<Float> ReyeX;//右眼x轴坐标集合,链表易于频繁数据操作
-    public Hashtable<Integer,Float> LeyeSecondX;//用哈希表来存储左眼每秒的平均SPV
-    public Hashtable<Integer,Float> ReyeSecondX;//用哈希表来存储右眼每秒的平均SPV
-    public List<Float> slopeList_L;//左眼所有锯齿波SPV的集合
-    public List<Float> slopeList_R;//右眼所有锯齿波SPV的集合
+    private Hashtable<Integer,Float> LeyeSecondX;//用哈希表来存储左眼每秒的平均SPV
+    private Hashtable<Integer,Float> ReyeSecondX;//用哈希表来存储右眼每秒的平均SPV
+    private List<Float> slopeList_L;//左眼所有锯齿波SPV的集合 目前没有用到
+    private List<Float> slopeList_R;//右眼所有锯齿波SPV的集合
     private List<Float> slopeSecondList_L;//左眼某秒锯齿波SPV的集合
     private List<Float> slopeSecondList_R;//右眼某秒锯齿波SPV的集合
     private Hashtable<Integer,Float> LeyeDynamicPeriodSPV;//用以保存动态周期内的SPV,比如1-3秒,2-4秒等,key是开始时间
     private Hashtable<Integer,Float> ReyeDynamicPeriodSPV;
+    private Hashtable<Integer,Integer> LeyeSecondFastPhaseNum;
+    private Hashtable<Integer,Integer> ReyeSecondFastPhaseNum;
 
     /*暂时变量集合*/
     private Float startX_L;//某一段直线最开始值
@@ -65,8 +68,6 @@ public class Calculate {
 
         this.waveSlope_L=new HashSet<Float>();
         this.waveSlope_R=new HashSet<Float>();
-        this.slopeList_L=new ArrayList<Float>();
-        this.slopeList_R=new ArrayList<Float>();
         this.slopeSecondList_L=new ArrayList<Float>();
         this.slopeSecondList_R=new ArrayList<Float>();
 
@@ -78,6 +79,8 @@ public class Calculate {
         this.ReyeSecondX=new Hashtable<Integer,Float>();//哈希表初始化
         this.LeyeDynamicPeriodSPV=new Hashtable<Integer, Float>();//哈希表初始化
         this.ReyeDynamicPeriodSPV=new Hashtable<Integer, Float>();//哈希表初始化
+        this.LeyeSecondFastPhaseNum=new Hashtable<Integer, Integer>();//哈希表初始化
+        this.ReyeSecondFastPhaseNum=new Hashtable<Integer, Integer>();//哈希表初始化
     }
     //设置视频帧率相关信息
     public void setVideoInfo(int frameRate,int frameNum)
@@ -105,15 +108,26 @@ public class Calculate {
         lineDir_L=true;
         lineLong_L=0f;
         int num=0;//用来表示第几个点
+        int fastPhaseNum=0;//用于计算快相方向,快相为正则+1,快相为负则-1
         for(Float x:LeyeX)
         {
             //遍历所有1s,一秒一秒的来处理
             //先来判断是否完成一个完整的锯齿波
             if(waveSlope_L.size()==2)
             {
+                /*取慢相,返回值为绝对值*/
                 slope_L=miniSlope(waveSlope_L);
-                slopeList_L.add(slope_L);
                 slopeSecondList_L.add(slope_L);
+                /*取快相，返回值为正常值*/
+                slope_L=maxSlope(waveSlope_L);
+                if(slope_L>0)
+                {
+                    ++fastPhaseNum;
+                }
+                else if(slope_L<0)
+                {
+                    --fastPhaseNum;
+                }
                 waveSlope_L.clear();
             }
             ++lineLong_L;//虚线长度
@@ -154,8 +168,8 @@ public class Calculate {
                     {
                         //如果之前是往下走的，现在已经往上走了，所以代表之前那段直线结束
                         //开始计算上一段负斜率
-                        slope_L=(endX_L-startX_L)/(lineLong_L-1f);
-                        waveSlope_L.add(Math.abs(slope_L));
+                        slope_L=(endX_L-startX_L)*Tool.SPVConversionRatio/(lineLong_L-1f);
+                        waveSlope_L.add(slope_L);
                         lineLong_L=1f;
                         startX_L=endX_L;
                         endX_L=x;
@@ -170,8 +184,8 @@ public class Calculate {
                     {
                         //如果之前是往上走的，现在已经往下走了，所以代表之前那段直线结束
                         //开始计算上一段正斜率
-                        slope_L=(endX_L-startX_L)/(lineLong_L-1f);
-                        waveSlope_L.add(Math.abs(slope_L));
+                        slope_L=(endX_L-startX_L)*Tool.SPVConversionRatio/(lineLong_L-1f);
+                        waveSlope_L.add(slope_L);
                         lineLong_L=1f;
                         startX_L=endX_L;
                         endX_L=x;
@@ -188,6 +202,7 @@ public class Calculate {
             sumSPV+=tempSPV;
         }
         LeyeSecondX.put(second,sumSPV/(float) slopeSecondList_L.size());//存入每秒的平均SPV
+        LeyeSecondFastPhaseNum.put(second,fastPhaseNum);//存入每秒的快相方向个数
     }
     //处理右眼X轴坐标并保存各秒SPV
     public void processReyeX(int second)
@@ -199,15 +214,26 @@ public class Calculate {
         lineDir_R=true;
         lineLong_R=0f;
         int num=0;//用来表示第几个点
+        int fastPhaseNum=0;
         for(Float x:ReyeX)
         {
             //遍历所有1s,一秒一秒的来处理
             //先来判断是否完成一个完整的锯齿波
             if(waveSlope_R.size()==2)
             {
+                /*取慢相,返回值为绝对值*/
                 slope_R=miniSlope(waveSlope_R);
-                slopeList_R.add(slope_R);
                 slopeSecondList_R.add(slope_R);
+                /*取快相，返回值为正常值*/
+                slope_R=maxSlope(waveSlope_R);
+                if(slope_R>0)
+                {
+                    ++fastPhaseNum;
+                }
+                else if(slope_R<0)
+                {
+                    --fastPhaseNum;
+                }
                 waveSlope_R.clear();
             }
             ++lineLong_R;//虚线长度
@@ -248,8 +274,8 @@ public class Calculate {
                     {
                         //如果之前是往下走的，现在已经往上走了，所以代表之前那段直线结束
                         //开始计算上一段负斜率
-                        slope_R=(endX_R-startX_R)/(lineLong_R-1f);
-                        waveSlope_R.add(Math.abs(slope_R));
+                        slope_R=(endX_R-startX_R)*Tool.SPVConversionRatio/(lineLong_R-1f);
+                        waveSlope_R.add(slope_R);
                         lineLong_R=1f;
                         startX_R=endX_R;
                         endX_R=x;
@@ -264,8 +290,8 @@ public class Calculate {
                     {
                         //如果之前是往上走的，现在已经往下走了，所以代表之前那段直线结束
                         //开始计算上一段正斜率
-                        slope_R=(endX_R-startX_R)/(lineLong_R-1f);
-                        waveSlope_R.add(Math.abs(slope_R));
+                        slope_R=(endX_R-startX_R)*Tool.SPVConversionRatio/(lineLong_R-1f);
+                        waveSlope_R.add(slope_R);
                         lineLong_R=1f;
                         startX_R=endX_R;
                         endX_R=x;
@@ -282,22 +308,41 @@ public class Calculate {
             sumSPV+=tempSPV;
         }
         ReyeSecondX.put(second,sumSPV/(float) slopeSecondList_R.size());//存入每秒的平均SPV
+        ReyeSecondFastPhaseNum.put(second,fastPhaseNum);//存入每秒的快相方向个数
     }
-    //取一个完整波形斜率中的小值
+    //取一个完整波形斜率中的绝对值的小值,返回也是绝对值
     private Float miniSlope(HashSet<Float> slopes)
     {
         float slope=0f;
-        for(float temp:slopes)
+        boolean first=true;
+        for(float single:slopes)
         {
+            float temp=Math.abs(single);
+            if(first)
+            {
+                //取第一个值
+                first=false;
+                slope=temp;
+            }
             if(temp<slope)
             {
                 slope=temp;
-                break;
             }
-            else if(temp>=slope)
+        }
+        return slope;
+    }
+    //取一个完整波形斜率中的绝对值的小值,返回是原始值,非绝对值
+    private Float maxSlope(HashSet<Float> slopes)
+    {
+        float absSlope=0f;//用于保存绝对值
+        float slope=0f;
+        for(float single:slopes)
+        {
+            float temp=Math.abs(single);
+            if(temp>=absSlope)
             {
-                //这个地方取第一个值
-                slope=temp;
+                absSlope=temp;
+                slope=single;
             }
         }
         return slope;
@@ -355,11 +400,11 @@ public class Calculate {
         int secondStart;
         float totalSPV=0f;
         float tempSPV=0f;
-        if(second>=Tool.HighTidePeriodSecond)
+        if(second>= HighTidePeriodSecond)
         {
             //可以计算要给完整的周期
-            secondStart=second+1-Tool.HighTidePeriodSecond;
-            for(;secondStart<=Tool.HighTidePeriodSecond;++secondStart)
+            secondStart=second+1- HighTidePeriodSecond;
+            for(; secondStart<= HighTidePeriodSecond; ++secondStart)
             {
                 if(eye)
                 {
@@ -372,7 +417,7 @@ public class Calculate {
                     totalSPV+=ReyeSecondX.get(secondStart);
                 }
             }
-            tempSPV=totalSPV/(float) Tool.HighTidePeriodSecond;
+            tempSPV=totalSPV/(float) HighTidePeriodSecond;
 
         }
         else
@@ -437,9 +482,8 @@ public class Calculate {
     }
     /*
     * 用于判断眼睛是否病变
-    * return ture:正常  false:异常
-    * */
-    public boolean judgeDisease()
+    * return ture:正常  false:异常*/
+    public boolean judgeDiagnosis()
     {
         for(float tempSPV:LeyeDynamicPeriodSPV.values())
         {
@@ -456,5 +500,54 @@ public class Calculate {
             }
         }
         return true;
+    }
+    /*
+    * 用于判断眼睛快相方向
+    * 参数:eye用来表示左右眼睛,true代表左眼,false代表右眼
+    * return ture:左  false:右*/
+    public boolean judgeFastPhase(boolean eye)
+    {
+        int num=0;
+        if(eye)
+        {
+            //左眼
+            for(int single:LeyeSecondFastPhaseNum.values())
+            {
+                num+=single;
+            }
+        }
+        else
+        {
+            //右眼
+            for(int single:ReyeSecondFastPhaseNum.values())
+            {
+                num+=single;
+            }
+        }
+        return num<0;
+    }
+    /*
+    * 判断是否存在眼睛处理结果
+    * 参数:eye用来表示左右眼睛,true代表左眼,false代表右眼
+    * return ture:有  false:无*/
+    public boolean judegeEye(boolean eye)
+    {
+        if(eye)
+        {
+            return LeyeSecondFastPhaseNum.size()>0;
+        }
+        else
+        {
+            return ReyeSecondFastPhaseNum.size()>0;
+        }
+    }
+    public static String getPeriod(int startTime,int totalTime) {
+        if (startTime + HighTidePeriodSecond <= totalTime) {
+            return startTime + "s-" + (startTime + HighTidePeriodSecond) + "s";
+        }
+        else
+        {
+            return startTime + "s-" + (totalTime+1) + "s";
+        }
     }
 }
