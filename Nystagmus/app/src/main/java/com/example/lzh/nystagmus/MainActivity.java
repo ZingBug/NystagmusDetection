@@ -341,6 +341,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     {
         EyeNum=Tool.ALL_EYE;
         vacpLeft=new FFmpegFrameGrabber(Tool.AddressLeftEye);
+        vacpRight=new FFmpegFrameGrabber(Tool.AddressRightEye);
         try {
             vacpLeft.start();
         }
@@ -350,7 +351,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             L.d("左眼链接失败"+e.toString());
             EyeNum=Tool.NOT_LEYE;
         }
-        vacpRight=new FFmpegFrameGrabber(Tool.AddressRightEye);
         try {
             vacpRight.start();
         }
@@ -745,10 +745,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             {
                 //此时有右眼
                 RightFrame=new Frame();
-                //IplImage RightImage=new IplImage();
                 RightFrame=null;
+
                 try {
-                    RightFrame=vacpRight.grabImage().clone();
+                    RightFrame=vacpRight.grabImage();
                     if(RightFrame==null)
                     {
                         //视频播放结束
@@ -762,16 +762,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     videoStop(1);
                     return;
                 }
+                /*图像旋转180°*/
                 RightFrameMat=new Mat();
-                RightFrameMat=matConverter_R.convertToMat(RightFrame).clone();
+                Mat RightFrameSrcMat=matConverter_R.convertToMat(RightFrame).clone();
+                RightFrameMat=RightFrameSrcMat.clone();
+                Point2f center=new Point2f(RightFrameSrcMat.cols()/2,RightFrameSrcMat.rows()/2);
+                Mat affineTrans=opencv_imgproc.getRotationMatrix2D(center,180.0,1.0);
+                opencv_imgproc.warpAffine(RightFrameSrcMat,RightFrameMat,affineTrans,RightFrameMat.size());
             }
             if(EyeNum==Tool.NOT_REYE||EyeNum==Tool.ALL_EYE)
             {
                 //此时有左眼
+                Frame barrier=new Frame();//起阻隔RightFrame和LeftFrame作用,必需,重要
                 LeftFrame=new Frame();
                 LeftFrame=null;
                 try {
-                    LeftFrame=vacpLeft.grabImage().clone();
+                    LeftFrame=vacpLeft.grabImage();
                     if(LeftFrame==null)
                     {
                         //视频播放结束
@@ -785,8 +791,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     videoStop(0);
                     return;
                 }
+                /*图像旋转180°*/
                 LeftFrameMat=new Mat();
-                LeftFrameMat=matConverter_L.convertToMat(LeftFrame).clone();
+                Mat LeftFrameSrcMat=matConverter_L.convertToMat(LeftFrame).clone();
+                LeftFrameMat=LeftFrameSrcMat.clone();
+                Point2f center=new Point2f(LeftFrameSrcMat.cols()/2,LeftFrameSrcMat.rows()/2);
+                Mat affineTrans=opencv_imgproc.getRotationMatrix2D(center,180.0,1.0);
+                opencv_imgproc.warpAffine(LeftFrameSrcMat,LeftFrameMat,affineTrans,LeftFrameMat.size());
             }
             if(EyeNum==Tool.VEDIO_ONLY_EYE)
             {
@@ -809,7 +820,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     videoStop(0);
                     return;
                 }
+
                 LeftFrameMat=matConverter.convertToMat(LeftFrame);
+
                 if(IsTest&&calNum==Tool.TimerSecondNum)
                 {
                     //进行SPV分析
