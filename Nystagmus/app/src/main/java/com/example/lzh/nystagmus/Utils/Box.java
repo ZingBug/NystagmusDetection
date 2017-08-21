@@ -10,7 +10,11 @@ public class Box {
     private double y;
     private double r;
     public Box()
-    {}
+    {
+        this.x=0f;
+        this.y=0f;
+        this.r=0f;
+    }
     public Box(double x,double y,double r)
     {
         this.x=x;

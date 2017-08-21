@@ -342,6 +342,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         EyeNum=Tool.ALL_EYE;
         vacpLeft=new FFmpegFrameGrabber(Tool.AddressLeftEye);
         vacpRight=new FFmpegFrameGrabber(Tool.AddressRightEye);
+        //vacpLeft=new FFmpegFrameGrabber("http://192.168.1.110:8080/video");
+        //vacpRight=new FFmpegFrameGrabber("http://192.168.1.120:8080/video");
         try {
             vacpLeft.start();
         }
@@ -744,12 +746,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if(EyeNum==Tool.NOT_LEYE||EyeNum==Tool.ALL_EYE)
             {
                 //此时有右眼
-                RightFrame=new Frame();
-                RightFrame=null;
-
+                //RightFrame=new Frame(176,144,8,3);
+                //RightFrame=null;
                 try {
-                    RightFrame=vacpRight.grabImage();
-                    if(RightFrame==null)
+                    //RightFrame=vacpRight.grabImage();
+                    if((RightFrame=vacpRight.grabImage())==null)
                     {
                         //视频播放结束
                         videoStop(1);
@@ -773,12 +774,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if(EyeNum==Tool.NOT_REYE||EyeNum==Tool.ALL_EYE)
             {
                 //此时有左眼
-                Frame barrier=new Frame();//起阻隔RightFrame和LeftFrame作用,必需,重要
-                LeftFrame=new Frame();
-                LeftFrame=null;
+                //Frame barrier=new Frame();//起阻隔RightFrame和LeftFrame作用,必需,重要
+                //LeftFrame=new Frame();
+                //LeftFrame=null;
                 try {
-                    LeftFrame=vacpLeft.grabImage();
-                    if(LeftFrame==null)
+                    //LeftFrame=vacpLeft.grabImage();
+                    if((LeftFrame=vacpLeft.grabImage())==null)
                     {
                         //视频播放结束
                         videoStop(0);
