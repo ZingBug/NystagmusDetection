@@ -1,5 +1,7 @@
 package com.example.lzh.nystagmus.Utils;
 
+import java.util.Objects;
+
 /**
  * 用于表示一个圆
  * Created by LZH on 2017/7/17.
@@ -46,8 +48,24 @@ public class Box {
         return this.r;
     }
 
+    public boolean equals(Object otherObject)
+    {
+        if(this==otherObject) return true;
+
+        if(otherObject==null) return false;
+
+        if(getClass()!=otherObject.getClass()) return false;
+
+        Box other=(Box)otherObject;
+
+        return this.x==other.x&&this.y==other.y&&this.r==other.r;
+    }
+    public int hashCode()
+    {
+        return Objects.hash(this.x,this.y,this.r);
+    }
     public String toString()
     {
-        return getClass().getName()+"[x="+x+",y="+y+",r="+r+"]";
+        return getClass().getName()+"[x="+this.x+",y="+this.y+",r="+this.r+"]";
     }
 }
