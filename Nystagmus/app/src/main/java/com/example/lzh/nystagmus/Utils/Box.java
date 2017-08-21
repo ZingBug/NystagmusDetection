@@ -45,4 +45,9 @@ public class Box {
     {
         return this.r;
     }
+
+    public String toString()
+    {
+        return getClass().getName()+"[x="+x+",y="+y+",r="+r+"]";
+    }
 }
