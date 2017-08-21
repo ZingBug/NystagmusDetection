@@ -156,7 +156,7 @@
                 android:layout_height="match_parent"
                 android:gravity="center_vertical|right"
                 android:text="最大反应期："
-                android:textSize="18sp"/>
+                android:textSize="18sp" />
             <TextView
                 android:id="@+id/leyeHighperiod"
                 android:layout_width="0dp"
@@ -164,14 +164,15 @@
                 android:layout_height="match_parent"
                 android:gravity="center"
                 android:textColor="@color/black"
-                android:textSize="18sp"/>
+                android:textSize="16sp" />
             <TextView
                 android:layout_width="0dp"
                 android:layout_weight="4"
                 android:layout_height="match_parent"
                 android:text="最大反应期："
                 android:gravity="center_vertical|right"
-                android:textSize="18sp"/>
+                android:textSize="16sp"
+                />
             <TextView
                 android:id="@+id/reyeHighperiod"
                 android:layout_width="0dp"
@@ -179,7 +180,7 @@
                 android:layout_height="match_parent"
                 android:gravity="center"
                 android:textColor="@color/black"
-                android:textSize="18sp"/>
+                android:textSize="16sp" />
         </LinearLayout>
         <LinearLayout
             android:layout_width="match_parent"

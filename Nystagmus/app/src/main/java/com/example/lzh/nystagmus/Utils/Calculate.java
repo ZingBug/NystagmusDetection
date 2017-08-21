@@ -14,9 +14,11 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Vector;
 
+import static android.R.attr.end;
 import static android.R.attr.endX;
 import static android.R.attr.flipInterval;
 import static android.R.attr.max;
+import static android.R.attr.yesNoPreferenceStyle;
 import static com.example.lzh.nystagmus.Utils.Tool.HighTidePeriodSecond;
 
 /**
@@ -35,7 +37,7 @@ public class Calculate {
     private List<Float> slopeList_R;//右眼所有锯齿波SPV的集合
     private List<Float> slopeSecondList_L;//左眼某秒锯齿波SPV的集合
     private List<Float> slopeSecondList_R;//右眼某秒锯齿波SPV的集合
-    private Hashtable<Integer,Float> LeyeDynamicPeriodSPV;//用以保存动态周期内的SPV,比如1-3秒,2-4秒等,key是开始时间
+    private Hashtable<Integer,Float> LeyeDynamicPeriodSPV;//用以保存动态周期内的SPV,比如1-3秒,2-4秒等,key是结束时间
     private Hashtable<Integer,Float> ReyeDynamicPeriodSPV;
     private Hashtable<Integer,Integer> LeyeSecondFastPhaseNum;
     private Hashtable<Integer,Integer> ReyeSecondFastPhaseNum;
@@ -56,6 +58,9 @@ public class Calculate {
     private boolean lineDir_R;//某一段直线方向  true代表正斜率  false代表负斜率
     private Float slope_R;//某一段直线斜率
     private HashSet<Float> waveSlope_R;//用来保存一个完整锯齿波内的斜率，即一个正斜率，一个负斜率
+
+    private boolean IsOverSpvPeriodLeye=false;
+    private boolean IsOverSpvPeriodReye=false;
 
     public Calculate()
     {
@@ -197,11 +202,22 @@ public class Calculate {
         }
         LeyeX.clear();//清除剩下的所有数据了
         float sumSPV=0f;
-        for(Float tempSPV:slopeSecondList_L)
+
+        if(slopeSecondList_L.size()>0)
         {
-            sumSPV+=tempSPV;
+            //队列不为空时
+            for(Float tempSPV:slopeSecondList_L)
+            {
+                sumSPV+=tempSPV;
+            }
+            LeyeSecondX.put(second,sumSPV/(float) slopeSecondList_L.size());//存入每秒的平均SPV
         }
-        LeyeSecondX.put(second,sumSPV/(float) slopeSecondList_L.size());//存入每秒的平均SPV
+        else
+        {
+            //队列为空时
+            LeyeSecondX.put(second,0f);//存入每秒的平均SPV
+        }
+
         LeyeSecondFastPhaseNum.put(second,fastPhaseNum);//存入每秒的快相方向个数
     }
     //处理右眼X轴坐标并保存各秒SPV
@@ -303,27 +319,31 @@ public class Calculate {
         }
         ReyeX.clear();//清除剩下的所有数据了
         float sumSPV=0f;
-        for(Float tempSPV:slopeSecondList_R)
+
+        if(slopeSecondList_R.size()>0)
         {
-            sumSPV+=tempSPV;
+            //队列不为空时
+            for(Float tempSPV:slopeSecondList_R)
+            {
+                sumSPV+=tempSPV;
+            }
+            ReyeSecondX.put(second,sumSPV/(float) slopeSecondList_R.size());//存入每秒的平均SPV
         }
-        ReyeSecondX.put(second,sumSPV/(float) slopeSecondList_R.size());//存入每秒的平均SPV
+        else
+        {
+            //队列为空时
+            ReyeSecondX.put(second,0f);//存入每秒的平均SPV
+        }
         ReyeSecondFastPhaseNum.put(second,fastPhaseNum);//存入每秒的快相方向个数
     }
     //取一个完整波形斜率中的绝对值的小值,返回也是绝对值
     private Float miniSlope(HashSet<Float> slopes)
     {
-        float slope=0f;
+        float slope=Float.POSITIVE_INFINITY;//初始值为最大值
         boolean first=true;
         for(float single:slopes)
         {
             float temp=Math.abs(single);
-            if(first)
-            {
-                //取第一个值
-                first=false;
-                slope=temp;
-            }
             if(temp<slope)
             {
                 slope=temp;
@@ -334,12 +354,12 @@ public class Calculate {
     //取一个完整波形斜率中的绝对值的小值,返回是原始值,非绝对值
     private Float maxSlope(HashSet<Float> slopes)
     {
-        float absSlope=0f;//用于保存绝对值
+        float absSlope=Float.NEGATIVE_INFINITY;//用于保存绝对值,初始值为最小值
         float slope=0f;
         for(float single:slopes)
         {
             float temp=Math.abs(single);
-            if(temp>=absSlope)
+            if(temp>absSlope)
             {
                 absSlope=temp;
                 slope=single;
@@ -349,7 +369,6 @@ public class Calculate {
     }
     //用以获取最大眼震反应期
     /*
-    * totalSecond用来表示测试总时间
     * eye用来表示左右眼睛,true代表左眼,false代表右眼*/
     public int getHighTidePeriod(boolean eye)
     {
@@ -402,9 +421,28 @@ public class Calculate {
         float tempSPV=0f;
         if(second>= HighTidePeriodSecond)
         {
+            //清空测试前段时间非完整周期数据
+            if((!IsOverSpvPeriodLeye)&&eye)
+            {
+                //左眼
+                IsOverSpvPeriodLeye=true;
+                for(int i=1;i<HighTidePeriodSecond;++i)
+                {
+                    LeyeDynamicPeriodSPV.remove(i);
+                }
+            }
+            else if((!IsOverSpvPeriodReye)&&(!eye))
+            {
+                //右眼
+                IsOverSpvPeriodReye=true;
+                for(int i=1;i<HighTidePeriodSecond;++i)
+                {
+                    ReyeDynamicPeriodSPV.remove(i);
+                }
+            }
             //可以计算要给完整的周期
             secondStart=second+1- HighTidePeriodSecond;
-            for(; secondStart<= HighTidePeriodSecond; ++secondStart)
+            for(; secondStart<= second; ++secondStart)
             {
                 if(eye)
                 {
@@ -418,11 +456,12 @@ public class Calculate {
                 }
             }
             tempSPV=totalSPV/(float) HighTidePeriodSecond;
-
         }
         else
         {
             //假如周期为10s,假设现在是4s,则只计算前4s的
+            IsOverSpvPeriodLeye=false;
+            IsOverSpvPeriodReye=false;
             secondStart=1;
             for(;secondStart<=second;++secondStart)
             {
@@ -541,13 +580,18 @@ public class Calculate {
             return ReyeSecondFastPhaseNum.size()>0;
         }
     }
-    public static String getPeriod(int startTime,int totalTime) {
-        if (startTime + HighTidePeriodSecond <= totalTime) {
-            return startTime + "s-" + (startTime + HighTidePeriodSecond) + "s";
+    public static String getPeriod(int endTime) {
+        if(endTime==1)
+        {
+            return "1s";
+        }
+        if(endTime<=HighTidePeriodSecond)
+        {
+            return "1s-"+endTime+"s";
         }
         else
         {
-            return startTime + "s-" + (totalTime+1) + "s";
+            return (endTime-HighTidePeriodSecond+1)+"s-"+endTime+"s";
         }
     }
 }

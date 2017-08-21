@@ -4,9 +4,12 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Build;
+import android.support.design.widget.NavigationView;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -17,6 +20,9 @@ import android.widget.EditText;
 import com.example.lzh.nystagmus.Utils.L;
 import com.example.lzh.nystagmus.Utils.T;
 import com.example.lzh.nystagmus.Utils.Tool;
+import com.github.mikephil.charting.utils.Utils;
+
+import org.bytedeco.javacpp.presets.opencv_core;
 
 import java.io.BufferedWriter;
 import java.io.FileOutputStream;
@@ -34,9 +40,12 @@ public class SettingsActivity extends AppCompatActivity {
     private SharedPreferences.Editor editor;
     private static String tempLeftAddress="";//用于在应用打开生存周期内暂存地址信息
     private static String tempRightAddress="";//用于在应用打开生存周期内暂存地址信息
-    private static boolean isTempAddress=false;//用于判断应用是否是第一次打开
-
+    private static String tempGrayValue="";//用于在应用打开生存周期内暂存灰度值信息,暂时用字符串表示
+    private static boolean isTemp=false;//用于判断应用是否是第一次打开
     private Button cameraAddressUpdate;
+
+    private EditText edit_GrayValue;
+    private Button recognitionParameterUpdate;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,9 +60,7 @@ public class SettingsActivity extends AppCompatActivity {
             int option = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                     | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;//如果想要隐藏导航栏，可以加上View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
             decorView.setSystemUiVisibility(option);
-            //getWindow().setNavigationBarColor(Color.TRANSPARENT);//设置导航栏背景为透明
-            getWindow().setStatusBarColor(Color.TRANSPARENT);
-            //getWindow().setNavigationBarColor(getResources().getColor(R.color.lightSteelBlue));
+            getWindow().setStatusBarColor(getResources().getColor(R.color.blue));
         }
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -61,10 +68,15 @@ public class SettingsActivity extends AppCompatActivity {
         // 设置返回键和菜单栏可用，可见
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
+
         edit_LeftCameraAddress=(EditText)findViewById(R.id.camera_address_left_input);
         edit_RightCameraAddress=(EditText)findViewById(R.id.camera_address_right_input);
+        edit_GrayValue=(EditText) findViewById(R.id.recognition_gray_value_input);
 
         cameraAddressUpdate=(Button)findViewById(R.id.camera_address_update_button);
+        recognitionParameterUpdate=(Button) findViewById(R.id.recognition_parameter_update_button);
+
+        edit_GrayValue.addTextChangedListener(new MyTextWatcher(edit_GrayValue));//增加一个文本监听类
 
         pref=getSharedPreferences("CameraAddress",MODE_PRIVATE);
         editor=pref.edit();
@@ -80,12 +92,79 @@ public class SettingsActivity extends AppCompatActivity {
                         //更新地址
                         String inputLeftAddress=edit_LeftCameraAddress.getText().toString();
                         String inputRightAddress=edit_RightCameraAddress.getText().toString();
-                        save(inputLeftAddress,inputRightAddress);
+                        saveAddress(inputLeftAddress,inputRightAddress);
                         Tool.AddressLeftEye=inputLeftAddress;
                         Tool.AddressRightEye=inputRightAddress;
                         T.showShort(SettingsActivity.this,"网络摄像头地址修改成功");
                         L.d("网络摄像头地址修改成功");
                         break;
+                    }
+                    case R.id.recognition_parameter_update_button:
+                    {
+                        //更新参数
+                        String inputGrayValueStr=edit_GrayValue.getText().toString();
+                        int inputGrayValue;
+                        try
+                        {
+                            inputGrayValue=Integer.parseInt(inputGrayValueStr);
+                        }
+                        catch (NumberFormatException e)
+                        {
+                            T.showShort(SettingsActivity.this,R.string.label_input_error);
+                            L.d(R.string.label_input_error+e.toString());
+                            return;
+                        }
+                        if(inputGrayValue<255&&inputGrayValue>0)
+                        {
+                            //符合标准,其实在文本监听那块就已经有了判断
+                            saveParameter(inputGrayValue);
+                            Tool.RecognitionGrayValue=inputGrayValue;
+                            T.showShort(SettingsActivity.this,"图像识别参数修改成功");
+                            L.d("图像识别参数修改成功");
+                        }
+                        else
+                        {
+                            T.showShort(SettingsActivity.this,R.string.label_input_error);
+                        }
+                    }
+                    default:
+                        break;
+                }
+            }
+        });
+        recognitionParameterUpdate.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v)
+            {
+                switch (v.getId())
+                {
+                    case R.id.recognition_parameter_update_button:
+                    {
+                        //更新参数
+                        String inputGrayValueStr=edit_GrayValue.getText().toString();
+                        int inputGrayValue;
+                        try
+                        {
+                            inputGrayValue=Integer.parseInt(inputGrayValueStr);
+                        }
+                        catch (NumberFormatException e)
+                        {
+                            T.showShort(SettingsActivity.this,R.string.label_input_error);
+                            L.d(R.string.label_input_error+e.toString());
+                            return;
+                        }
+                        if(inputGrayValue<255&&inputGrayValue>0)
+                        {
+                            //符合标准,其实在文本监听那块就已经有了判断
+                            saveParameter(inputGrayValue);
+                            Tool.RecognitionGrayValue=inputGrayValue;
+                            T.showShort(SettingsActivity.this,"图像识别参数修改成功");
+                            L.d("图像识别参数修改成功");
+                        }
+                        else
+                        {
+                            T.showShort(SettingsActivity.this,R.string.label_input_error);
+                        }
                     }
                     default:
                         break;
@@ -99,19 +178,29 @@ public class SettingsActivity extends AppCompatActivity {
         //在活动交互时调用
         String leftAddress;
         String rightAddress;
-        if(!isTempAddress)
+        int grayValue;
+        if(!isTemp)
         {
             leftAddress=pref.getString("LeftCameraAddress",Tool.AddressLeftEye);
             rightAddress=pref.getString("RightCameraAddress",Tool.AddressRightEye);
-            isTempAddress=true;
+            grayValue=pref.getInt("GrayValue",Tool.RecognitionGrayValue);
+            isTemp=true;
         }
         else
         {
             leftAddress=tempLeftAddress;
             rightAddress=tempRightAddress;
+            try {
+                grayValue=Integer.parseInt(tempGrayValue);
+            }
+            catch (NumberFormatException e)
+            {
+                grayValue=Tool.RecognitionGrayValue;
+            }
         }
         edit_LeftCameraAddress.setText(leftAddress);
         edit_RightCameraAddress.setText(rightAddress);
+        edit_GrayValue.setText(Integer.toString(grayValue));
         super.onResume();
     }
     @Override
@@ -120,6 +209,7 @@ public class SettingsActivity extends AppCompatActivity {
         //在退出活动时暂存信息，下次打开时直接可以显示
         tempLeftAddress=edit_LeftCameraAddress.getText().toString();
         tempRightAddress=edit_RightCameraAddress.getText().toString();
+        tempGrayValue=edit_GrayValue.getText().toString();
         super.onPause();
     }
     @Override
@@ -139,11 +229,13 @@ public class SettingsActivity extends AppCompatActivity {
                 edit_RightCameraAddress.setText(Tool.AddressRightEyeDefault);
                 //cameraAddressUpdate.performClick();//模拟点击事件
                 //为了给出不一样的提醒，不采用模拟点击按钮了
-                save(Tool.AddressLeftEyeDefault,Tool.AddressRightEyeDefault);
+                saveAddress(Tool.AddressLeftEyeDefault,Tool.AddressRightEyeDefault);
+                saveParameter(Tool.RecognitionGrayValueDefault);
                 Tool.AddressLeftEye=Tool.AddressLeftEyeDefault;
                 Tool.AddressRightEye=Tool.AddressRightEyeDefault;
-                T.showShort(SettingsActivity.this,"恢复默认地址成功");
-                L.d("恢复默认地址成功");
+                Tool.RecognitionGrayValue=Tool.RecognitionGrayValueDefault;
+                T.showShort(SettingsActivity.this,"恢复默认成功");
+                L.d("恢复默认成功");
                 break;
             }
             default:
@@ -157,10 +249,56 @@ public class SettingsActivity extends AppCompatActivity {
         getMenuInflater().inflate(R.menu.settings_menu,menu);
         return true;
     }
-    public void save(String leftAddress,String rightAddress)
+    private void saveAddress(String leftAddress,String rightAddress)
     {
         editor.putString("LeftCameraAddress",leftAddress);//左眼写入
         editor.putString("RightCameraAddress",rightAddress);//右眼写入
         editor.apply();//执行应用
     }
+    private void saveParameter(int grayValue)
+    {
+        editor.putInt("GrayValue",grayValue);
+        editor.apply();//执行应用
+    }
+
+
+    private class MyTextWatcher implements TextWatcher {
+
+        private EditText editText;
+        private int value;
+
+        MyTextWatcher(EditText editText) {
+            this.editText = editText;
+        }
+
+        @Override
+        public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+        }
+
+        @Override
+        public void onTextChanged(CharSequence text, int start, int lengthBefore, int lengthAfter) {
+            //实时判断文本变化是否正确
+            String str = text.toString();
+
+            try
+            {
+                value=Integer.parseInt(str);
+            }
+            catch (NumberFormatException e)
+            {
+                T.showShort(SettingsActivity.this,R.string.label_input_error);
+                L.d(R.string.label_input_error+e.toString());
+                return;
+            }
+            if(value>255||value<1)
+            {
+                T.showShort(SettingsActivity.this,R.string.label_input_error);
+            }
+        }
+
+        @Override
+        public void afterTextChanged(Editable s) {
+        }
+    }
 }
+

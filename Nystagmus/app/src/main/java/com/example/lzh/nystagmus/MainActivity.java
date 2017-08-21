@@ -125,7 +125,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private static OpenCVFrameConverter.ToIplImage matConverter_L = new OpenCVFrameConverter.ToIplImage();//Mat转Frame
     private static OpenCVFrameConverter.ToIplImage matConverter_R = new OpenCVFrameConverter.ToIplImage();//Mat转Frame
     private AndroidFrameConverter bitmapConverter = new  AndroidFrameConverter();//Frame转bitmap
-    private boolean isVideoOpen=false;
 
     private Mat LeftFrameMat;
     private Mat RightFrameMat;
@@ -272,6 +271,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         pref=getSharedPreferences("CameraAddress",MODE_PRIVATE);
         Tool.AddressLeftEye=pref.getString("LeftCameraAddress",Tool.AddressLeftEye);
         Tool.AddressRightEye=pref.getString("RightCameraAddress",Tool.AddressRightEye);
+        Tool.RecognitionGrayValue=pref.getInt("GrayValue",Tool.RecognitionGrayValue);
 
         L.d("项目打开");
     }
@@ -372,7 +372,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 return;
             }
         }
-        isVideoOpen=false;//不在加载本地视频
 
         if(IsTimerRun)
         {
@@ -659,7 +658,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     }
                     T.showShort(this,"视频加载成功");
                     L.d("视频加载成功");
-                    isVideoOpen=true;
+
                     //开始播放
                     Frame tempFrame=null;
                     try {
@@ -834,7 +833,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     final float leyeRealtime=calculate.getRealTimeSPV(secondTime,true);
                     final float leyeMax=calculate.getMaxSPV(true);
                     final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
-                    final String period_L=getPeriod(maxSecond_L,secondTime);
+                    final String period_L=getPeriod(maxSecond_L);
                     //强制在UI线程下更新
                     runOnUiThread(new Runnable() {
                         @Override
@@ -883,8 +882,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     final float reyeMax=calculate.getMaxSPV(false);
                     final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
                     final int maxSecond_R=calculate.getHighTidePeriod(false);//右眼
-                    final String period_L=getPeriod(maxSecond_L,secondTime);
-                    final String period_R=getPeriod(maxSecond_R,secondTime);
+                    final String period_L=getPeriod(maxSecond_L);
+                    final String period_R=getPeriod(maxSecond_R);
                     //强制在UI线程下更新
                     runOnUiThread(new Runnable() {
                         @Override
@@ -913,7 +912,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         final float leyeRealtime=calculate.getRealTimeSPV(secondTime,true);
                         final float leyeMax=calculate.getMaxSPV(true);
                         final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
-                        final String period_L=getPeriod(maxSecond_L,secondTime);
+                        final String period_L=getPeriod(maxSecond_L);
                         //强制在UI线程下更新
                         runOnUiThread(new Runnable() {
                             @Override
@@ -931,7 +930,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         final float reyeRealtime=calculate.getRealTimeSPV(secondTime,false);
                         final float reyeMax=calculate.getMaxSPV(false);
                         final int maxSecond_R=calculate.getHighTidePeriod(false);//右眼
-                        final String period_R=getPeriod(maxSecond_R,secondTime);
+                        final String period_R=getPeriod(maxSecond_R);
                         //强制在UI线程下更新
                         runOnUiThread(new Runnable() {
                             @Override

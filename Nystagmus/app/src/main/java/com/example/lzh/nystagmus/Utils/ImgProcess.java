@@ -153,7 +153,7 @@ public class ImgProcess {
         opencv_imgproc.cvtColor(grayimg,grayimg,opencv_imgproc.COLOR_RGB2GRAY);//灰度化处理
         opencv_imgproc.medianBlur(grayimg,grayimg,9);//中值滤波
         opencv_imgproc.blur(grayimg,grayimg,size);
-        grayout=Binary(grayimg,45);
+        grayout=Binary(grayimg,Tool.RecognitionGrayValue);
         return grayout;
     }
     //二值化处理
@@ -168,10 +168,6 @@ public class ImgProcess {
     {
         Box box=new Box(0.0d,0.0d,0.0d);
         long Sum=points.size();
-        if(Sum>300)
-        {
-            //return box;
-        }
         //如果少于三点，不能拟合圆，直接返回
         if(Sum<3)
         {
@@ -368,30 +364,24 @@ public class ImgProcess {
                 }
             }
         }
-
-        //Leye=OriginalLeftEye.clone();
-        //Leye=new Mat(OriginalLeftEye);
         if(Lcircles.size()>0)
         {
-            //Leye=PlotC(Lcircles,Leye);//绘制左眼圆心和圆轮廓
-            PlotC(Lcircles,LeyeImage);
+            PlotC(Lcircles,LeyeImage);//绘制左眼圆心和圆轮廓
         }
-        //Reye=new Mat(OriginalRightEye);
         if(Rcircles.size()>0)
         {
-            //Reye=PlotC(Rcircles,Reye);//绘制右眼圆心和圆轮廓
-            PlotC(Rcircles,ReyeImage);
+            PlotC(Rcircles,ReyeImage);//绘制右眼圆心和圆轮廓
         }
+
         if(IsLeye)
         {
-            //opencv_imgproc.drawContours(Leye,Lcontours,LmaxAreaIndex,green);
-            opencv_imgproc.cvDrawContours(LeyeImage,cvLcontourKeep,cvgreen,cvgreen,1);
-            Leye=new Mat(LeyeImage);
+            //opencv_imgproc.drawContours(Leye,Lcontours,LmaxAreaIndex,green);//使用opencv绘制轮廓
+            //opencv_imgproc.cvDrawContours(LeyeImage,cvLcontourKeep,cvgreen,cvgreen,1);//使用javacv绘制轮廓
         }
         if(IsReye)
         {
-            //opencv_imgproc.drawContours(Reye,Rcontours,RmaxAreaIndex,green);
-            opencv_imgproc.cvDrawContours(ReyeImage,cvRcontourKeep,cvgreen,cvgreen,1);
+            //opencv_imgproc.drawContours(Reye,Rcontours,RmaxAreaIndex,green);//使用opencv绘制轮廓
+            //opencv_imgproc.cvDrawContours(ReyeImage,cvRcontourKeep,cvgreen,cvgreen,1);//使用javacv绘制轮廓
         }
         Reye=new Mat(ReyeImage);
         Leye=new Mat(LeyeImage);
