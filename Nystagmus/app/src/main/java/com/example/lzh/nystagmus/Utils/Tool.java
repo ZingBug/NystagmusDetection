@@ -18,6 +18,7 @@ public class Tool {
     public static final String AddressLeftEyeDefault="http://192.168.43.119:8080/?action=stream?dummy=param.mjpg";//左眼网络地址
     public static final String AddressRightEyeDefault="http://192.168.43.119:8090/?action=stream?dummy=param.mjpg";//右眼网络地址
 
+    public static final String RequestBingPic="http://guolin.tech/api/bing_pic";
     public static final String EggRoseAddress="http://img.ivsky.com/img/tupian/pre/201611/10/piaoliang_de_meigui-008.jpg";
     public static final String EggCakeAddress="http://img.wmtp.net/wp-content/uploads/2016/11/1125_cake_1.jpeg";
 

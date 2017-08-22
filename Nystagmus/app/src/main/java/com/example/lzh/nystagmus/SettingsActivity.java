@@ -227,6 +227,7 @@ public class SettingsActivity extends AppCompatActivity {
                 //恢复默认设置
                 edit_LeftCameraAddress.setText(Tool.AddressLeftEyeDefault);
                 edit_RightCameraAddress.setText(Tool.AddressRightEyeDefault);
+                edit_GrayValue.setText(String.valueOf(Tool.RecognitionGrayValueDefault));
                 //cameraAddressUpdate.performClick();//模拟点击事件
                 //为了给出不一样的提醒，不采用模拟点击按钮了
                 saveAddress(Tool.AddressLeftEyeDefault,Tool.AddressRightEyeDefault);
