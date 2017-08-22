@@ -94,10 +94,18 @@ public class ImgProcess {
     private IplImage LeyeImage;
     private IplImage ReyeImage;
 
-    //构造函数
+    /**
+     * 默认构造函数
+     */
     public ImgProcess()
     {}
-    //开始
+    /**
+     * 开始参数设置
+     * @param leye 输入左眼图像
+     * @param reye 输入右眼图像
+     * @param eyeratio 眼睛轮廓高宽比，用于闭眼检测
+     * @param eyenum 眼睛数目
+     */
     public void Start(Mat leye, Mat reye, double eyeratio, int eyenum)
     {
         Reye=new Mat(reye);
@@ -110,33 +118,46 @@ public class ImgProcess {
         OriginalLeftEye=new Mat(leye);
         OriginalRightEye=new Mat(reye);
     }
-    //输出双眼
+    /**
+     * 输出双眼图像
+     * @return 双眼图像
+     */
     public Mat Outputimg()
     {
         return outimg;
     }
-    //输出右眼
+    /**
+     * 输出右眼图像
+     * @return 右眼图像
+     */
     public Mat OutReye()
     {
         return Reye;
         //return OriginalRightEye;
     }
-    //输出左眼
+    /**
+     * 输出左眼图像
+     * @return 左眼图像
+     */
     public Mat OutLeye()
     {
         return Leye;
         //return OriginalLeftEye;
     }
-    //图像分割  这个函数有bug
+    /**
+     * 图像左右分割
+     * @param divedeImg 源图像
+     * @return ture：分割成功，false：分割失败
+     */
     private boolean DivideEye(final Mat divedeImg)
     {
         if(divedeImg.rows()>0&&divedeImg.cols()>0)
         {
+            Rect reye_box = new Rect(0, 1, divedeImg.cols()/2, divedeImg.rows() - 1);
+            Rect leye_box = new Rect(divedeImg.cols()/2, 1, divedeImg.cols()/2-1, divedeImg.rows() - 1);
+            Leye=new Mat(divedeImg,reye_box);
+            Reye=new Mat(divedeImg,leye_box);
 
-            Rect leye_box=new Rect(1,1,divedeImg.cols()/2-1,divedeImg.rows()-1);
-            Rect reye_box=new Rect(leye_box.x()+leye_box.width(),1,divedeImg.cols()/2-1,divedeImg.rows()-1);
-            Leye=divedeImg.apply(leye_box);
-            Reye=divedeImg.apply(reye_box);
             return true;
         }
         else
@@ -144,7 +165,11 @@ public class ImgProcess {
             return false;
         }
     }
-    //灰度化处理
+    /**
+     * 滤波、灰度化等处理，返回图像便于边缘检测
+     * @param grayimg0 源图像
+     * @return 灰度图像
+     */
     private Mat GrayDetect(Mat grayimg0)
     {
         Mat grayout=new Mat();
@@ -156,14 +181,23 @@ public class ImgProcess {
         grayout=Binary(grayimg,Tool.RecognitionGrayValue);
         return grayout;
     }
-    //二值化处理
+    /**
+     * 二值化处理
+     * @param binaryimg 源图像
+     * @param value 二值化阈值
+     * @return 二值化图像
+     */
     private Mat Binary(Mat binaryimg, int value)
     {
         Mat binaryout=new Mat();
         opencv_imgproc.threshold(binaryimg,binaryout,value,255,opencv_imgproc.THRESH_BINARY);
         return binaryout;
     }
-    //二乘法拟合圆
+    /**
+     * 二乘法拟合圆
+     * @param points 待拟合点的集合
+     * @return 拟合圆，包括圆心坐标和半径
+     */
     private Box circleLeastFit(Vector<Point> points)
     {
         Box box=new Box(0.0d,0.0d,0.0d);
@@ -214,28 +248,22 @@ public class ImgProcess {
         box.setR(sqrt(a*a + b*b - 4 * c) / 2);
         return box;
     }
-    //边缘检测
+    /**
+     * 边缘检测
+     * @param edgeimg 检测图像
+     * @return 边缘图像
+     */
     private Mat EdgeDetect(Mat edgeimg)
     {
         Mat edgeout=new Mat();
         opencv_imgproc.Canny(edgeimg,edgeout,100,250,3,false);
         return edgeout;
     }
-    //绘制圆
-    private Mat PlotC(Vector<Box> circles,Mat midImage)
-    {
-        Mat tempMat=new Mat(midImage);
-        //tempMat=midImage.clone();
-        for(int i=0;i<circles.size();++i)
-        {
-            Point center=new Point((int)Math.round(circles.get(i).getX()),(int)Math.round(circles.get(i).getY()));
-            int radius=(int)circles.get(i).getR();
-            opencv_imgproc.circle(tempMat,center,1,blue,-1,8,0);//画圆心
-            opencv_imgproc.circle(tempMat,center,radius,red,1,8,0);//画圆轮廓
-        }
-        return tempMat;
-    }
-    //绘制圆
+    /**
+     * 绘制源
+     * @param circles 需要绘制的圆的集合
+     * @param midImage 源图像
+     */
     private void PlotC(Vector<Box> circles,IplImage midImage)
     {
         for(int i=0;i<circles.size();++i)
@@ -246,7 +274,9 @@ public class ImgProcess {
             opencv_imgproc.cvCircle(midImage,center,radius,cvred,1,8,0);//画圆轮廓
         }
     }
-    //左右眼分开处理
+    /**
+     * 眼睛图像识别处理
+     */
     public void ProcessSeparate()
     {
         Mat Rgryaimg;

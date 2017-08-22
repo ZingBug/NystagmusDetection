@@ -26,9 +26,6 @@ import static com.example.lzh.nystagmus.Utils.Tool.HighTidePeriodSecond;
  */
 
 public class Calculate {
-
-    private int FrameRate;//视频帧速率
-    private int FrameNum;//视频总帧数
     private LinkedList<Float> LeyeX;//左眼x轴坐标集合,链表易于频繁数据操作
     private LinkedList<Float> ReyeX;//右眼x轴坐标集合,链表易于频繁数据操作
     private Hashtable<Integer,Float> LeyeSecondX;//用哈希表来存储左眼每秒的平均SPV
@@ -39,7 +36,7 @@ public class Calculate {
     private List<Float> slopeSecondList_R;//右眼某秒锯齿波SPV的集合
     private Hashtable<Integer,Float> LeyeDynamicPeriodSPV;//用以保存动态周期内的SPV,比如1-3秒,2-4秒等,key是结束时间
     private Hashtable<Integer,Float> ReyeDynamicPeriodSPV;
-    private Hashtable<Integer,Integer> LeyeSecondFastPhaseNum;
+    private Hashtable<Integer,Integer> LeyeSecondFastPhaseNum;//用于保存各秒的快相方向个数
     private Hashtable<Integer,Integer> ReyeSecondFastPhaseNum;
 
     /*暂时变量集合*/
@@ -62,6 +59,9 @@ public class Calculate {
     private boolean IsOverSpvPeriodLeye=false;
     private boolean IsOverSpvPeriodReye=false;
 
+    /**
+     * 构造函数
+     */
     public Calculate()
     {
         this.lineDir_L=true;
@@ -76,8 +76,6 @@ public class Calculate {
         this.slopeSecondList_L=new ArrayList<Float>();
         this.slopeSecondList_R=new ArrayList<Float>();
 
-        this.FrameRate=20;//默认帧率为30
-        this.FrameNum=100;//默认帧数为100
         this.LeyeX=new LinkedList<Float>();//初始化左眼X轴坐标容器
         this.ReyeX=new LinkedList<Float>();//初始化右眼X轴坐标容器
         this.LeyeSecondX=new Hashtable<Integer,Float>();//哈希表初始化
@@ -87,23 +85,26 @@ public class Calculate {
         this.LeyeSecondFastPhaseNum=new Hashtable<Integer, Integer>();//哈希表初始化
         this.ReyeSecondFastPhaseNum=new Hashtable<Integer, Integer>();//哈希表初始化
     }
-    //设置视频帧率相关信息
-    public void setVideoInfo(int frameRate,int frameNum)
-    {
-        this.FrameNum=frameNum;
-        this.FrameRate=frameRate;
-    }
-    //添加左眼X轴坐标
+    /**
+     * 添加左眼X轴坐标
+     * @param x x轴坐标添加值
+     */
     public void addLeyeX(float x)
     {
         LeyeX.add(x);
     }
-    //添加右眼X轴坐标
+    /**
+     * 添加右眼X轴坐标
+     * @param x x轴坐标添加值
+     */
     public void addReyeX(float x)
     {
         ReyeX.add(x);
     }
-    //处理左眼X轴坐标并保存各秒SPV
+    /**
+     * 处理左眼X轴坐标并保存各秒平均SPV
+     * @param second 当前秒数
+     */
     public void processLeyeX(int second)
     {
         //LeyeX内保存的点数未超过1s且需要最后结束处理剩下点
@@ -220,7 +221,10 @@ public class Calculate {
 
         LeyeSecondFastPhaseNum.put(second,fastPhaseNum);//存入每秒的快相方向个数
     }
-    //处理右眼X轴坐标并保存各秒SPV
+    /**
+     * 处理右眼X轴坐标并保存各秒平均SPV
+     * @param second 当前秒数
+     */
     public void processReyeX(int second)
     {
         //ReyeX内保存的点数未超过1s且需要最后结束处理剩下点
@@ -336,7 +340,11 @@ public class Calculate {
         }
         ReyeSecondFastPhaseNum.put(second,fastPhaseNum);//存入每秒的快相方向个数
     }
-    //取一个完整波形斜率中的绝对值的小值,返回也是绝对值
+    /**
+     * 取一个完整波形斜率中的绝对值的小值,返回也是绝对值
+     * @param slopes 哈希队列
+     * @return 哈希队列中所有元素绝对值的最小值，但返回值为绝对值，非正常值
+     */
     private Float miniSlope(HashSet<Float> slopes)
     {
         float slope=Float.POSITIVE_INFINITY;//初始值为最大值
@@ -351,7 +359,11 @@ public class Calculate {
         }
         return slope;
     }
-    //取一个完整波形斜率中的绝对值的小值,返回是原始值,非绝对值
+    /**
+     * 取一个完整波形斜率中的绝对值的小值,返回是原始值,非绝对值
+     * @param slopes 哈希队列
+     * @return 哈希队列中所有元素绝对值的最小值，但返回值为正常值，非绝对值
+     */
     private Float maxSlope(HashSet<Float> slopes)
     {
         float absSlope=Float.NEGATIVE_INFINITY;//用于保存绝对值,初始值为最小值
@@ -367,9 +379,10 @@ public class Calculate {
         }
         return slope;
     }
-    //用以获取最大眼震反应期
-    /*
-    * eye用来表示左右眼睛,true代表左眼,false代表右眼*/
+    /**
+     * 用以获取最大眼震反应期
+     * @param eye 用来表示左右眼睛,true代表左眼,false代表右眼
+     * @return 最大眼震反应期的结束时间*/
     public int getHighTidePeriod(boolean eye)
     {
         float temp=0f;
@@ -410,10 +423,11 @@ public class Calculate {
 
         return maxSecond;
     }
-    //用以计算实时SPV
-    /*
+    /**
+     * 用以计算实时SPV
     * second用来表示当前时间
-    * eye用来表示左右眼睛,true代表左眼,false代表右眼*/
+    * @return eye用来表示左右眼睛,true代表左眼,false代表右眼
+    */
     public float getRealTimeSPV(int second,boolean eye)
     {
         int secondStart;
@@ -491,7 +505,11 @@ public class Calculate {
 
         return tempSPV;
     }
-    //用以计算前段时间最大的SPV
+    /**
+     * 用于计算之前时间最大的SPV值
+     * @param eye 用来表示左右眼睛,true代表左眼,false代表右眼
+     * @return 返回已经处理过的最大的SPV值(平均值)
+     */
     public float getMaxSPV(boolean eye)
     {
         float tempMax=0f;
@@ -519,9 +537,9 @@ public class Calculate {
         }
         return tempMax;
     }
-    /*
+    /**
     * 用于判断眼睛是否病变
-    * return ture:正常  false:异常*/
+    * @return ture:正常  false:异常*/
     public boolean judgeDiagnosis()
     {
         for(float tempSPV:LeyeDynamicPeriodSPV.values())
@@ -540,10 +558,10 @@ public class Calculate {
         }
         return true;
     }
-    /*
+    /**
     * 用于判断眼睛快相方向
-    * 参数:eye用来表示左右眼睛,true代表左眼,false代表右眼
-    * return ture:左  false:右*/
+    * @param eye 用来表示左右眼睛,true代表左眼,false代表右眼
+    * @return ture:左  false:右*/
     public boolean judgeFastPhase(boolean eye)
     {
         int num=0;
@@ -565,10 +583,10 @@ public class Calculate {
         }
         return num<0;
     }
-    /*
+    /**
     * 判断是否存在眼睛处理结果
-    * 参数:eye用来表示左右眼睛,true代表左眼,false代表右眼
-    * return ture:有  false:无*/
+    * @param eye 用来表示左右眼睛,true代表左眼,false代表右眼
+    * @return ture:有  false:无*/
     public boolean judegeEye(boolean eye)
     {
         if(eye)
@@ -580,6 +598,10 @@ public class Calculate {
             return ReyeSecondFastPhaseNum.size()>0;
         }
     }
+    /**
+     * @param endTime 最大眼震高潮期结束时间
+     * @return 最大眼震高潮期时间区间
+     */
     public static String getPeriod(int endTime) {
         if(endTime==1)
         {
