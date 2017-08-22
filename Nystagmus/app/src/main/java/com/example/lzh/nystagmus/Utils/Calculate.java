@@ -105,7 +105,7 @@ public class Calculate {
      * 处理左眼X轴坐标并保存各秒平均SPV
      * @param second 当前秒数
      */
-    public void processLeyeX(int second)
+    public void processLeyeX(int second) throws NumberFormatException
     {
         //LeyeX内保存的点数未超过1s且需要最后结束处理剩下点
         lineBegin_L=true;
@@ -225,7 +225,7 @@ public class Calculate {
      * 处理右眼X轴坐标并保存各秒平均SPV
      * @param second 当前秒数
      */
-    public void processReyeX(int second)
+    public void processReyeX(int second) throws NumberFormatException
     {
         //ReyeX内保存的点数未超过1s且需要最后结束处理剩下点
         lineBegin_R=true;
@@ -538,7 +538,7 @@ public class Calculate {
         return tempMax;
     }
     /**
-    * 用于判断眼睛是否病变
+    * 用于判断中枢是否病变
     * @return ture:正常  false:异常*/
     public boolean judgeDiagnosis()
     {

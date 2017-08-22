@@ -7,7 +7,8 @@ import java.util.Objects;
  * Created by LZH on 2017/7/17.
  */
 
-public class Box {
+public class Box implements Cloneable
+{
     private double x;
     private double y;
     private double r;
@@ -67,5 +68,9 @@ public class Box {
     public String toString()
     {
         return getClass().getName()+"[x="+this.x+",y="+this.y+",r="+this.r+"]";
+    }
+    public Box clone() throws CloneNotSupportedException
+    {
+        return (Box)super.clone();
     }
 }

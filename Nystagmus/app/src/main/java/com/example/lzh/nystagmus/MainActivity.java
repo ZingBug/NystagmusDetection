@@ -459,6 +459,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         IsReyeCenter=false;
         LeyeCenter=new Box();
         ReyeCenter=new Box();
+
         FrameNum=0;
 
         L.d("开始测试");
