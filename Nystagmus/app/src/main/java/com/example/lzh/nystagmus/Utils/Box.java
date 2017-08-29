@@ -7,7 +7,7 @@ import java.util.Objects;
  * Created by LZH on 2017/7/17.
  */
 
-public class Box implements Cloneable
+public class Box implements Cloneable,Comparable<Box>
 {
     private double x;
     private double y;
@@ -59,7 +59,7 @@ public class Box implements Cloneable
 
         Box other=(Box)otherObject;
 
-        return this.x==other.x&&this.y==other.y&&this.r==other.r;
+        return this.x==other.x&&this.y==other.y&&this.r==other.r;//必须对应着散列码相同
     }
     public int hashCode()
     {
@@ -72,5 +72,9 @@ public class Box implements Cloneable
     public Box clone() throws CloneNotSupportedException
     {
         return (Box)super.clone();
+    }
+    public int compareTo(Box other)
+    {
+        return Double.compare(this.r,other.getR());
     }
 }

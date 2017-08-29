@@ -12,11 +12,14 @@ import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.provider.Settings;
+import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
@@ -36,6 +39,7 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+import java.text.SimpleDateFormat;
 
 import com.example.lzh.nystagmus.Utils.Box;
 import com.example.lzh.nystagmus.Utils.Calculate;
@@ -55,8 +59,10 @@ import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 import com.github.mikephil.charting.utils.Utils;
 
 
+import org.bytedeco.javacpp.avcodec;
 import org.bytedeco.javacv.AndroidFrameConverter;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
+import org.bytedeco.javacv.FFmpegFrameRecorder;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.FrameGrabber;
 import org.bytedeco.javacv.FrameRecorder;
@@ -75,6 +81,7 @@ import org.bytedeco.javacpp.opencv_core.Scalar;
 
 import java.io.File;
 import java.nio.IntBuffer;
+import java.sql.Date;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -88,9 +95,13 @@ import static com.example.lzh.nystagmus.R.id.toolbar;
 import static com.example.lzh.nystagmus.R.id.transition_current_scene;
 import static com.example.lzh.nystagmus.Utils.Calculate.getPeriod;
 import static com.example.lzh.nystagmus.Utils.Tool.AddressRightEye;
+import static org.bytedeco.javacpp.avcodec.AV_CODEC_ID_H264;
+import static org.bytedeco.javacpp.avcodec.AV_CODEC_ID_MPEG4;
 import static org.bytedeco.javacpp.opencv_core.CV_SUBMAT_FLAG;
 import static org.bytedeco.javacpp.opencv_core.IPL_DEPTH_8U;
 import static org.bytedeco.javacpp.opencv_core.cvSize;
+import static org.bytedeco.javacpp.opencv_imgproc.INTER_AREA;
+import static org.bytedeco.javacpp.opencv_imgproc.INTER_LINEAR;
 import static org.bytedeco.javacpp.opencv_videoio.CAP_MODE_YUYV;
 import static org.bytedeco.javacpp.opencv_videoio.CV_CAP_FFMPEG;
 
@@ -115,6 +126,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private FFmpegFrameGrabber vacpRight;//打开右眼网络视频
     private Timer timer;//定时器
     private static final int Storage_RequestCode=1;//存储权限申请码
+    private FFmpegFrameRecorder recorder;
 
     private Frame LeftFrame;
     private Frame RightFrame;
@@ -137,6 +149,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Message message;
     private Message ChartMessage;
     private boolean IsTimerRun=false;
+    private Mat blankMat;
 
     private int EyeNum=Tool.NOT_ALLEYE;//眼睛数目
     private boolean IsLeyeCenter=false;//用于判断左眼是否确定初始位置
@@ -175,6 +188,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     /*测试用*/
     private boolean IsTest=false;//用于判断是否开始测试
 
+    /*视频保存名称*/
+    private String VideoStorgeName;
+    private CoordinatorLayout MainContainer;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -192,6 +209,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         DiagnosticResult=(TextView) findViewById(R.id.diagnosticResult);
         LeyeDirectionResult=(TextView) findViewById(R.id.leyeDirection);
         ReyeDirectionResult=(TextView) findViewById(R.id.reyeDirection);
+        MainContainer=(CoordinatorLayout) findViewById(R.id.main_container);
 
         /*初始化设置为0*/
         LeyeRealtimeSPV.setText("0");
@@ -273,6 +291,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Tool.AddressRightEye=pref.getString("RightCameraAddress",Tool.AddressRightEye);
         Tool.RecognitionGrayValue=pref.getInt("GrayValue",Tool.RecognitionGrayValue);
 
+        blankMat=new Mat();
+        TempView=BitmapFactory.decodeResource(getResources(),R.drawable.novideo);
+        Frame TempFrame=bitmapConverter.convert(TempView);
+        blankMat=matConverter.convertToMat(TempFrame);
         L.d("项目打开");
     }
     @Override
@@ -340,10 +362,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void openCamera()
     {
         EyeNum=Tool.ALL_EYE;
-        vacpLeft=new FFmpegFrameGrabber(Tool.AddressLeftEye);
-        vacpRight=new FFmpegFrameGrabber(Tool.AddressRightEye);
-        //vacpLeft=new FFmpegFrameGrabber("http://192.168.1.110:8080/video");
-        //vacpRight=new FFmpegFrameGrabber("http://192.168.1.120:8080/video");
+        //vacpLeft=new FFmpegFrameGrabber(Tool.AddressLeftEye);
+        //vacpRight=new FFmpegFrameGrabber(Tool.AddressRightEye);
+        //vacpLeft=new FFmpegFrameGrabber("http://192.168.155.2:8080/video");
+        //vacpRight=new FFmpegFrameGrabber("http://192.168.155.3:8080/video");
         try {
             vacpLeft.start();
         }
@@ -408,8 +430,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         FrameNum=0;
 
         timer=new Timer();
-        timer.schedule(new readFarme(),50,5);
-        L.d("视频开始播放");
+
         calculate=new Calculate();
         calNum=0;//1s计算一次
         secondTime=0;//0s
@@ -428,6 +449,43 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         LeyeDirectionResult.setText(R.string.defalut);
         ReyeDirectionResult.setText(R.string.defalut);
         DiagnosticResult.setTextColor(MainActivity.this.getResources().getColor(R.color.black));
+
+        /*视频录制初始化*/
+        switch (EyeNum){
+            case Tool.NOT_LEYE:
+            {
+                //只有右眼
+                VideoStorgeName=Tool.GetVideoStoragePath();
+                recorder=new FFmpegFrameRecorder(VideoStorgeName,vacpRight.getImageWidth(),vacpRight.getImageHeight(),vacpRight.getAudioChannels());
+                recorder.setFrameNumber(vacpRight.getFrameNumber());
+                break;
+            }
+            case Tool.NOT_REYE:
+            {
+                //只有左眼
+                VideoStorgeName=Tool.GetVideoStoragePath();
+                recorder=new FFmpegFrameRecorder(VideoStorgeName,vacpLeft.getImageWidth(),vacpLeft.getImageHeight(),vacpLeft.getAudioChannels());
+                recorder.setFrameNumber(vacpLeft.getFrameNumber());
+                break;
+            }
+            case Tool.ALL_EYE:
+            {
+                //双眼都在
+                VideoStorgeName=Tool.GetVideoStoragePath();
+                recorder=new FFmpegFrameRecorder(VideoStorgeName,vacpLeft.getImageWidth()+vacpRight.getImageWidth(),Tool.Max(vacpLeft.getImageHeight(),vacpRight.getImageHeight()));
+                recorder.setFrameNumber(Tool.Min(vacpLeft.getFrameNumber(),vacpRight.getFrameNumber()));
+            break;
+        }
+        default:
+        {
+            //如果不存在以上情况的话
+            return;
+        }
+        }
+        recorder.setVideoCodec(avcodec.AV_CODEC_ID_MPEG4);
+        recorder.setFormat("mp4");
+        timer.schedule(new readFarme(),50,5);
+        L.d("视频开始播放");
     }
     private void openVideo()
     {
@@ -470,6 +528,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         ToastHandle.sendMessage(message);
         IsTimerRun=true;
 
+        //视频开始录制
+        try
+        {
+            recorder.start();
+        }
+        catch (FrameRecorder.Exception e)
+        {
+            L.d("视频开启录制失败");
+        }
+
         IsTest=true;//开始测试
     }
     private void stopPlay()
@@ -477,6 +545,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if(IsTimerRun)
         {
             IsTimerRun=false;
+            if(IsTest&&(EyeNum==Tool.ALL_EYE||EyeNum==Tool.NOT_LEYE||EyeNum==Tool.NOT_REYE))
+            {
+                try
+                {
+                    recorder.stop();
+                    recorder.release();
+                }
+                catch (FFmpegFrameRecorder.Exception e)
+                {
+                    L.d("视频保存出错");
+                }
+            }
             IsTest=false;
             timer.cancel();
             /*诊断结果*/
@@ -703,7 +783,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     FrameNum=0;
 
                     timer=new Timer();
-                    timer.schedule(new readFarme(),50,10);
+
                     L.d("视频开始播放");
                     calculate=new Calculate();
                     calNum=0;//1s计算一次
@@ -725,6 +805,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     DiagnosticResult.setTextColor(MainActivity.this.getResources().getColor(R.color.black));
 
                     IsTest=true;
+                    timer.schedule(new readFarme(),50,10);
                 }
                 break;
             }
@@ -746,10 +827,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if(EyeNum==Tool.NOT_LEYE||EyeNum==Tool.ALL_EYE)
             {
                 //此时有右眼
-                //RightFrame=new Frame(176,144,8,3);
-                //RightFrame=null;
                 try {
-                    //RightFrame=vacpRight.grabImage();
                     if((RightFrame=vacpRight.grabImage())==null)
                     {
                         //视频播放结束
@@ -770,15 +848,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Point2f center=new Point2f(RightFrameSrcMat.cols()/2,RightFrameSrcMat.rows()/2);
                 Mat affineTrans=opencv_imgproc.getRotationMatrix2D(center,180.0,1.0);
                 opencv_imgproc.warpAffine(RightFrameSrcMat,RightFrameMat,affineTrans,RightFrameMat.size());
+
+                //如果只有右眼的情况下
+                if(EyeNum==Tool.NOT_LEYE&&IsTest)
+                {
+                    try
+                    {
+                        recorder.record(RightFrame);
+                    }
+                    catch (FFmpegFrameRecorder.Exception e)
+                    {
+                        L.d("视频记录出错");
+                    }
+                }
             }
             if(EyeNum==Tool.NOT_REYE||EyeNum==Tool.ALL_EYE)
             {
                 //此时有左眼
-                //Frame barrier=new Frame();//起阻隔RightFrame和LeftFrame作用,必需,重要
-                //LeftFrame=new Frame();
-                //LeftFrame=null;
                 try {
-                    //LeftFrame=vacpLeft.grabImage();
                     if((LeftFrame=vacpLeft.grabImage())==null)
                     {
                         //视频播放结束
@@ -799,6 +886,34 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Point2f center=new Point2f(LeftFrameSrcMat.cols()/2,LeftFrameSrcMat.rows()/2);
                 Mat affineTrans=opencv_imgproc.getRotationMatrix2D(center,180.0,1.0);
                 opencv_imgproc.warpAffine(LeftFrameSrcMat,LeftFrameMat,affineTrans,LeftFrameMat.size());
+
+                //如果只有左眼的情况下
+                if(EyeNum==Tool.NOT_REYE&&IsTest)
+                {
+                    try
+                    {
+                        recorder.record(LeftFrame);
+                    }
+                    catch (FFmpegFrameRecorder.Exception e)
+                    {
+                        L.d("视频记录出错");
+                    }
+                }
+                //如果存在双眼视频
+                if(EyeNum==Tool.ALL_EYE&&IsTest)
+                {
+                    Mat mergeMat=new Mat();
+                    mergeMat=Tool.MergeMat(LeftFrameMat,RightFrameMat);
+                    Frame mergeFrame=matConverter.convert(mergeMat);
+                    try
+                    {
+                        recorder.record(mergeFrame);
+                    }
+                    catch (FFmpegFrameRecorder.Exception e)
+                    {
+                        L.d("视频记录出错");
+                    }
+                }
             }
             if(EyeNum==Tool.VEDIO_ONLY_EYE)
             {
@@ -1014,6 +1129,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     {
         timer.cancel();
         IsTimerRun=false;
+        if(IsTest&&(EyeNum==Tool.ALL_EYE||EyeNum==Tool.NOT_LEYE||EyeNum==Tool.NOT_REYE))
+        {
+            try
+            {
+                recorder.stop();
+                recorder.release();
+            }
+            catch (FFmpegFrameRecorder.Exception e)
+            {
+                L.d("视频保存出错");
+            }
+        }
         IsTest=false;
         /*诊断结果*/
         final boolean diagnosticResult=calculate.judgeDiagnosis();//诊断结果

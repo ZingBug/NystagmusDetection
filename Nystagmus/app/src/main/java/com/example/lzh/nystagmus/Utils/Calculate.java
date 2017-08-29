@@ -102,10 +102,10 @@ public class Calculate {
         ReyeX.add(x);
     }
     /**
-     * 处理左眼X轴坐标并保存各秒平均SPV
+     * 处理左眼X轴坐标并保存各秒平均SPV,上锁
      * @param second 当前秒数
      */
-    public void processLeyeX(int second) throws NumberFormatException
+    public synchronized void processLeyeX(int second) throws NumberFormatException
     {
         //LeyeX内保存的点数未超过1s且需要最后结束处理剩下点
         lineBegin_L=true;
@@ -222,10 +222,10 @@ public class Calculate {
         LeyeSecondFastPhaseNum.put(second,fastPhaseNum);//存入每秒的快相方向个数
     }
     /**
-     * 处理右眼X轴坐标并保存各秒平均SPV
+     * 处理右眼X轴坐标并保存各秒平均SPV,上锁
      * @param second 当前秒数
      */
-    public void processReyeX(int second) throws NumberFormatException
+    public synchronized void processReyeX(int second) throws NumberFormatException
     {
         //ReyeX内保存的点数未超过1s且需要最后结束处理剩下点
         lineBegin_R=true;
@@ -393,6 +393,7 @@ public class Calculate {
         if(eye)
         {
             //左眼
+
             e=LeyeDynamicPeriodSPV.keys();
             while (e.hasMoreElements())
             {
@@ -404,6 +405,7 @@ public class Calculate {
                     maxSecond=tempSecond;
                 }
             }
+
         }
         else
         {
