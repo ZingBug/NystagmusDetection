@@ -3,43 +3,25 @@ package com.example.lzh.nystagmus;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.graphics.Matrix;
-import android.graphics.Typeface;
-import android.graphics.drawable.BitmapDrawable;
-import android.net.Uri;
 import android.os.Build;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
-import android.provider.Settings;
 import android.support.design.widget.CoordinatorLayout;
-import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
-import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
-import android.support.v4.content.res.TypedArrayUtils;
-import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
-import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.WindowManager;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
-import java.text.SimpleDateFormat;
 
 import com.example.lzh.nystagmus.Utils.Box;
 import com.example.lzh.nystagmus.Utils.Calculate;
@@ -56,7 +38,6 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
-import com.github.mikephil.charting.utils.Utils;
 
 
 import org.bytedeco.javacpp.avcodec;
@@ -67,52 +48,17 @@ import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.FrameGrabber;
 import org.bytedeco.javacv.FrameRecorder;
 import org.bytedeco.javacv.OpenCVFrameConverter;
-import org.bytedeco.javacpp.opencv_core;
 import org.bytedeco.javacpp.opencv_core.*;
-import org.bytedeco.javacpp.opencv_core.IplImage;
-import org.bytedeco.javacpp.opencv_imgcodecs;
 import org.bytedeco.javacpp.opencv_imgproc;
-import org.bytedeco.javacpp.opencv_ml;
-import org.bytedeco.javacpp.opencv_videoio;
 import org.bytedeco.javacpp.opencv_core.Mat;
-import org.bytedeco.javacpp.opencv_core.Size;
 import org.bytedeco.javacpp.opencv_core.Rect;
-import org.bytedeco.javacpp.opencv_core.Scalar;
 
-import java.io.File;
-import java.nio.IntBuffer;
-import java.sql.Date;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import static android.os.Build.VERSION_CODES.N;
-import static com.example.lzh.nystagmus.R.id.diagnosticResult;
-import static com.example.lzh.nystagmus.R.id.start;
-import static com.example.lzh.nystagmus.R.id.toolbar;
-import static com.example.lzh.nystagmus.R.id.transition_current_scene;
 import static com.example.lzh.nystagmus.Utils.Calculate.getPeriod;
-import static com.example.lzh.nystagmus.Utils.Tool.AddressRightEye;
-import static org.bytedeco.javacpp.avcodec.AV_CODEC_ID_H264;
-import static org.bytedeco.javacpp.avcodec.AV_CODEC_ID_MPEG4;
-import static org.bytedeco.javacpp.opencv_core.CV_SUBMAT_FLAG;
-import static org.bytedeco.javacpp.opencv_core.IPL_DEPTH_8U;
-import static org.bytedeco.javacpp.opencv_core.cvSize;
-import static org.bytedeco.javacpp.opencv_imgproc.INTER_AREA;
-import static org.bytedeco.javacpp.opencv_imgproc.INTER_LINEAR;
-import static org.bytedeco.javacpp.opencv_videoio.CAP_MODE_YUYV;
-import static org.bytedeco.javacpp.opencv_videoio.CV_CAP_FFMPEG;
-
-import android.app.Activity;
-import android.content.Intent;
-import android.net.Uri;
-import android.os.Bundle;
-import android.view.View;
-import android.widget.Button;
-import android.util.Log;
-import android.provider.Contacts.People;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
 
@@ -129,8 +75,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private FFmpegFrameRecorder recorder;
 
     private Frame LeftFrame;
-    private Frame RightFrame;
     private Frame AllFrame;
+    private Frame RightFrame;
     private Frame tempLeftFrame;
     private Frame tempRightFrame;
     private static OpenCVFrameConverter.ToIplImage matConverter = new OpenCVFrameConverter.ToIplImage();//Mat转Frame
@@ -362,8 +308,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void openCamera()
     {
         EyeNum=Tool.ALL_EYE;
-        //vacpLeft=new FFmpegFrameGrabber(Tool.AddressLeftEye);
-        //vacpRight=new FFmpegFrameGrabber(Tool.AddressRightEye);
+        vacpLeft=new FFmpegFrameGrabber(Tool.AddressLeftEye);
+        vacpRight=new FFmpegFrameGrabber(Tool.AddressRightEye);
         //vacpLeft=new FFmpegFrameGrabber("http://192.168.155.2:8080/video");
         //vacpRight=new FFmpegFrameGrabber("http://192.168.155.3:8080/video");
         try {
@@ -377,6 +323,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
         try {
             vacpRight.start();
+            vacpRight.setImageHeight(vacpRight.getImageHeight()-1);//此处减1是为了
         }
         catch (org.bytedeco.javacv.FrameGrabber.Exception e)
         {
@@ -828,6 +775,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             {
                 //此时有右眼
                 try {
+                    RightFrame=new Frame();
                     if((RightFrame=vacpRight.grabImage())==null)
                     {
                         //视频播放结束
@@ -866,6 +814,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             {
                 //此时有左眼
                 try {
+                    LeftFrame=new Frame();
                     if((LeftFrame=vacpLeft.grabImage())==null)
                     {
                         //视频播放结束
@@ -919,7 +868,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             {
                 //单眼视频
                 LeftFrame=new Frame();
-                LeftFrame=null;
                 LeftFrameMat=new Mat();
                 try
                 {
@@ -964,7 +912,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if(EyeNum==Tool.VEDIO_EYE) {
                 //双眼视频都在
                 AllEyeMat = new Mat();
-                AllFrame = null;
+                AllFrame = new Frame();
                 try {
                     AllFrame = capture.grabFrame();
                     if (AllFrame == null) {

@@ -67,7 +67,6 @@ public class Tool {
         return mergeMat.clone();
     }
 
-
     public static int Max(int a,int b)
     {
         return a>b?a:b;
@@ -84,7 +83,7 @@ public class Tool {
         SimpleDateFormat format=new SimpleDateFormat("yyyyMMddHHmmss");
         String timeNow=format.format(date);
 
-        return Environment.getExternalStorageDirectory().getAbsolutePath()+"/"+timeNow+".mp4";
+        return Environment.getExternalStorageDirectory().getAbsolutePath()+"/NystagmusMovies/"+timeNow+".mp4";
     }
 
 }
