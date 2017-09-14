@@ -37,8 +37,12 @@ public class Tool {
     public static final float SPVMaxValue=0.5f;//SPV最大临界值，超过这个值即眼震眩晕异常
     public static final float SPVConversionRatio=10f;//在计算波形斜率时所用的换算比例
 
+    public static final String VideoStoragePath=Environment.getExternalStorageDirectory().getAbsolutePath()+"/NystagmusMovies";
+
     public static int RecognitionGrayValue=45;
     public static final int RecognitionGrayValueDefault=45;
+
+    public static final int VideoTransmitTestCode=6;
 
     public static opencv_core.Mat MergeMat(opencv_core.Mat leftMat, opencv_core.Mat rightMat)
     {
@@ -83,7 +87,8 @@ public class Tool {
         SimpleDateFormat format=new SimpleDateFormat("yyyyMMddHHmmss");
         String timeNow=format.format(date);
 
-        return Environment.getExternalStorageDirectory().getAbsolutePath()+"/NystagmusMovies/"+timeNow+".mp4";
+        //return Environment.getExternalStorageDirectory().getAbsolutePath()+"/NystagmusMovies/"+timeNow+".mp4";
+        return VideoStoragePath+"/"+timeNow+".mp4";
     }
 
 }

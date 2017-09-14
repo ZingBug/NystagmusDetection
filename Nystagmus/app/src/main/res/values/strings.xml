@@ -23,6 +23,7 @@
     <string name="label_recognition_gray_value">图像识别灰度值（范围：1-255）</string>
     <string name="label_recognition_parameter_button">更新参数</string>
     <string name="label_input_error">输入有误</string>
+    <string name="label_video_list">视频列表</string>
 
     <string name="large_text">\u3000\u3000哈尔滨工业大学（简称哈工大）隶属于工业和信息化部，是首批进入国家“211工程”和“985工程”建设的若干所大学之一。\r\n\r\n
     \u3000\u3000多年来，哈尔滨工业大学始终保持航天特色，坚持自主创新，不断主动承接国家高、精、尖大型科技项目，科研实力始终位居全国高校前列。\r\n\r\n

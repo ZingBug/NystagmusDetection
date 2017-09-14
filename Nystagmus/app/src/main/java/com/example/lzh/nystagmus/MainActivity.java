@@ -219,6 +219,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         startActivity(intent);
                         break;
                     }
+                    case R.id.nav_video:
+                    {
+                        //打开视频列表界面
+                        Intent intent=new Intent(MainActivity.this,VideoActivity.class);
+                        startActivityForResult(intent,Tool.VideoTransmitTestCode);
+                        break;
+                    }
                     default:
                         break;
                 }
@@ -664,13 +671,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onActivityResult(int requestCode,int resultCode,Intent data)
     {
+        String VideoPath="";
+        boolean isTransmit=false;
         switch (requestCode)
         {
+            case Tool.VideoTransmitTestCode:
+            {
+                if(resultCode==RESULT_OK)
+                {
+                    Bundle bundle=data.getExtras();
+                    VideoPath=bundle.getString("VideoPath");
+                    isTransmit=true;
+                    mDrawerLayout.closeDrawers();//关闭侧滑栏
+                }
+            }
             case OPEN_VIDEO:
             {
                 if(resultCode==RESULT_OK)
                 {
-                    String VideoPath= GetPath.getPath(this,data.getData());
+                    if(!isTransmit)
+                    {
+                        VideoPath= GetPath.getPath(this,data.getData());
+                    }
                     //视频文件地址为：/storage/emulated/0/test.mp4
                     //视频文件必须为mjpeg编码的video
                     capture=new FFmpegFrameGrabber(VideoPath);

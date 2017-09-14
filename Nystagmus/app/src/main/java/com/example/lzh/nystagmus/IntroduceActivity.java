@@ -155,7 +155,7 @@ public class IntroduceActivity extends AppCompatActivity {
                 runOnUiThread(new Runnable(){
                     @Override
                     public void run(){
-                        Glide.with(IntroduceActivity.this).load(bingPic).into(bingPicImg);
+                        Glide.with(IntroduceActivity.this).load(bingPic).thumbnail(0.1f).into(bingPicImg);
                     }
                 });
             }

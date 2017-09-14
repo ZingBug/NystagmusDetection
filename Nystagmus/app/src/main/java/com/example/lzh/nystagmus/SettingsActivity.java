@@ -65,7 +65,7 @@ public class SettingsActivity extends AppCompatActivity {
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        // 设置返回键和菜单栏可用，可见
+        // 设置返回键可用，可见
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
 
@@ -247,6 +247,7 @@ public class SettingsActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu)
     {
+        //创建右上方菜单栏按钮
         getMenuInflater().inflate(R.menu.settings_menu,menu);
         return true;
     }
@@ -261,7 +262,6 @@ public class SettingsActivity extends AppCompatActivity {
         editor.putInt("GrayValue",grayValue);
         editor.apply();//执行应用
     }
-
 
     private class MyTextWatcher implements TextWatcher {
 
