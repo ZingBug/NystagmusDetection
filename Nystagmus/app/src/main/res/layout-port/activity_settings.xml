@@ -73,17 +73,19 @@
                     android:inputType="textMultiLine"
                     android:maxLines="3" />
             </android.support.design.widget.TextInputLayout>
+
             <Button
                 android:id="@+id/camera_address_update_button"
                 style="?android:textAppearanceSmall"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@drawable/simplebutton"
+                android:paddingTop="5dp"
+                android:text="@string/label_camera_address_button"
                 android:textColor="@color/red"
                 android:textSize="18sp"
-                android:layout_marginTop="16dp"
-                android:text="@string/label_camera_address_button"
                 android:textStyle="normal" />
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="30dp"
@@ -111,9 +113,33 @@
                 android:background="@drawable/simplebutton"
                 android:textColor="@color/red"
                 android:textSize="18sp"
-                android:layout_marginTop="16dp"
+                android:paddingTop="5dp"
                 android:text="@string/label_recognition_parameter_button"
                 android:textStyle="normal" />
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="5dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp">
+                <Button
+                    android:id="@+id/clear_cache_button"
+                    style="?android:textAppearanceSmall"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/simplebutton"
+                    android:textColor="@color/red"
+                    android:textSize="18sp"
+                    android:text="@string/label_clear_cache"
+                    android:textStyle="normal" />
+                <TextView
+                    android:id="@+id/cache_size"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical|right"
+                    android:textSize="18sp"/>
+            </FrameLayout>
+
         </LinearLayout>
 
     </ScrollView>

@@ -16,7 +16,9 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 
+import com.example.lzh.nystagmus.Utils.GlideCacheUtil;
 import com.example.lzh.nystagmus.Utils.L;
 import com.example.lzh.nystagmus.Utils.T;
 import com.example.lzh.nystagmus.Utils.Tool;
@@ -46,6 +48,8 @@ public class SettingsActivity extends AppCompatActivity {
 
     private EditText edit_GrayValue;
     private Button recognitionParameterUpdate;
+    private TextView cacheSize;
+    private Button cacheClear;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,6 +80,9 @@ public class SettingsActivity extends AppCompatActivity {
         cameraAddressUpdate=(Button)findViewById(R.id.camera_address_update_button);
         recognitionParameterUpdate=(Button) findViewById(R.id.recognition_parameter_update_button);
 
+        cacheSize=(TextView) findViewById(R.id.cache_size);
+        cacheClear=(Button) findViewById(R.id.clear_cache_button);
+
         edit_GrayValue.addTextChangedListener(new MyTextWatcher(edit_GrayValue));//增加一个文本监听类
 
         pref=getSharedPreferences("CameraAddress",MODE_PRIVATE);
@@ -98,34 +105,6 @@ public class SettingsActivity extends AppCompatActivity {
                         T.showShort(SettingsActivity.this,"网络摄像头地址修改成功");
                         L.d("网络摄像头地址修改成功");
                         break;
-                    }
-                    case R.id.recognition_parameter_update_button:
-                    {
-                        //更新参数
-                        String inputGrayValueStr=edit_GrayValue.getText().toString();
-                        int inputGrayValue;
-                        try
-                        {
-                            inputGrayValue=Integer.parseInt(inputGrayValueStr);
-                        }
-                        catch (NumberFormatException e)
-                        {
-                            T.showShort(SettingsActivity.this,R.string.label_input_error);
-                            L.d(R.string.label_input_error+e.toString());
-                            return;
-                        }
-                        if(inputGrayValue<255&&inputGrayValue>0)
-                        {
-                            //符合标准,其实在文本监听那块就已经有了判断
-                            saveParameter(inputGrayValue);
-                            Tool.RecognitionGrayValue=inputGrayValue;
-                            T.showShort(SettingsActivity.this,"图像识别参数修改成功");
-                            L.d("图像识别参数修改成功");
-                        }
-                        else
-                        {
-                            T.showShort(SettingsActivity.this,R.string.label_input_error);
-                        }
                     }
                     default:
                         break;
@@ -171,11 +150,30 @@ public class SettingsActivity extends AppCompatActivity {
                 }
             }
         });
+        cacheClear.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v)
+            {
+                switch (v.getId())
+                {
+                    case R.id.clear_cache_button:
+                    {
+                        //清理缓存
+                        GlideCacheUtil.getInstance().clearImageAllCache(SettingsActivity.this);
+                        String cache= GlideCacheUtil.getInstance().getCacheSize(SettingsActivity.this);
+                        cacheSize.setText(cache);
+                        break;
+                    }
+                    default:break;
+                }
+            }
+        });
     }
     @Override
     public void onResume()
     {
         //在活动交互时调用
+        //先进行参数恢复
         String leftAddress;
         String rightAddress;
         int grayValue;
@@ -201,6 +199,9 @@ public class SettingsActivity extends AppCompatActivity {
         edit_LeftCameraAddress.setText(leftAddress);
         edit_RightCameraAddress.setText(rightAddress);
         edit_GrayValue.setText(Integer.toString(grayValue));
+        //显示缓存
+        String cache= GlideCacheUtil.getInstance().getCacheSize(SettingsActivity.this);
+        cacheSize.setText(cache);
         super.onResume();
     }
     @Override

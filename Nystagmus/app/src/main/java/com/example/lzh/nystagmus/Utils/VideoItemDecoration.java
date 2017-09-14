@@ -20,6 +20,6 @@ public class VideoItemDecoration extends RecyclerView.ItemDecoration {
     public void getItemOffsets(Rect outRect, View view, RecyclerView parent, RecyclerView.State state)
     {
         //设定底部边距为2px
-        outRect.set(0,0,0,2);
+        outRect.set(0,0,0,4);
     }
 }

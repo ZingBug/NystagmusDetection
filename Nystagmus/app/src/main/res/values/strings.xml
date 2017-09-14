@@ -22,6 +22,7 @@
     <string name="label_recognition_settings">图像识别参数设置：</string>
     <string name="label_recognition_gray_value">图像识别灰度值（范围：1-255）</string>
     <string name="label_recognition_parameter_button">更新参数</string>
+    <string name="label_clear_cache">清除缓存</string>
     <string name="label_input_error">输入有误</string>
     <string name="label_video_list">视频列表</string>
 

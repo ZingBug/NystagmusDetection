@@ -155,7 +155,7 @@ public class IntroduceActivity extends AppCompatActivity {
                 runOnUiThread(new Runnable(){
                     @Override
                     public void run(){
-                        Glide.with(IntroduceActivity.this).load(bingPic).thumbnail(0.1f).into(bingPicImg);
+                        Glide.with(IntroduceActivity.this).load(bingPic).into(bingPicImg);
                     }
                 });
             }
@@ -189,7 +189,7 @@ public class IntroduceActivity extends AppCompatActivity {
     {
         try {
             String ip = "61.135.169.125";// ping 的地址，可以换成任何一种可靠的外网，这是百度的地址
-            Process p = Runtime.getRuntime().exec("ping -c 1 -w 1 " + ip);// ping网址1次,超时时间1s
+            Process p = Runtime.getRuntime().exec("ping -c 1 -w 1 " + ip);// ping网址1次,超时时间2s
 
             // ping的状态
             //status 等于0的时候表示网络可用，status等于2时表示当前网络不可用。
