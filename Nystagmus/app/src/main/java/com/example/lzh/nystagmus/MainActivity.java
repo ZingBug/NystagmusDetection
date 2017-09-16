@@ -58,6 +58,7 @@ import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import static com.example.lzh.nystagmus.Utils.Calculate.MergeRealtimeAndMax;
 import static com.example.lzh.nystagmus.Utils.Calculate.getPeriod;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
@@ -115,10 +116,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private int secondTime;//视频测试时间
 
     /*SPV相关*/
-    private TextView LeyeRealtimeSPV;
-    private TextView ReyeRealtimeSPV;
-    private TextView LeyeMaxSPV;
-    private TextView ReyeMaxSPV;
+    private TextView LeyeXRealtimeAndMaxSPV;
+    private TextView ReyeXRealtimeAndMaxSPV;
+    private TextView LeyeYRealtimeAndMaxSPV;
+    private TextView ReyeYRealtimeAndMaxSPV;
     private TextView LeyeHighperiod;
     private TextView ReyeHighperiod;
     private DecimalFormat df;//数据格式,float转string保留两位小数
@@ -146,10 +147,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         imageView_reye=(ImageView)findViewById(R.id.righteye_view);
         mDrawerLayout=(DrawerLayout)findViewById(R.id.drawer_layout);
 
-        LeyeRealtimeSPV=(TextView) findViewById(R.id.leyeRealtimeSPV);
-        ReyeRealtimeSPV=(TextView) findViewById(R.id.reyeRealtimeSPV);
-        LeyeMaxSPV=(TextView) findViewById(R.id.leyeMaxSPV);
-        ReyeMaxSPV=(TextView) findViewById(R.id.reyeMaxSPV);
+        LeyeXRealtimeAndMaxSPV=(TextView) findViewById(R.id.leyeXRealtimeAndMaxSPV);
+        ReyeXRealtimeAndMaxSPV=(TextView) findViewById(R.id.reyeXRealtimeAndMaxSPV);
+        LeyeYRealtimeAndMaxSPV=(TextView) findViewById(R.id.leyeYRealtimeAndMaxSPV);
+        ReyeYRealtimeAndMaxSPV=(TextView) findViewById(R.id.reyeYRealtimeAndMaxSPV);
         LeyeHighperiod=(TextView) findViewById(R.id.leyeHighperiod);
         ReyeHighperiod=(TextView) findViewById(R.id.reyeHighperiod);
         DiagnosticResult=(TextView) findViewById(R.id.diagnosticResult);
@@ -158,17 +159,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         MainContainer=(CoordinatorLayout) findViewById(R.id.main_container);
 
         /*初始化设置为0*/
-        LeyeRealtimeSPV.setText("0");
-        ReyeRealtimeSPV.setText("0");
-        LeyeMaxSPV.setText("0");
-        ReyeMaxSPV.setText("0");
+        LeyeXRealtimeAndMaxSPV.setText("0/0");
+        ReyeXRealtimeAndMaxSPV.setText("0/0");
+        LeyeYRealtimeAndMaxSPV.setText("0/0");
+        ReyeYRealtimeAndMaxSPV.setText("0/0");
         LeyeHighperiod.setText("0s");
         ReyeHighperiod.setText("0s");
         DiagnosticResult.setText(R.string.defalut);
         LeyeDirectionResult.setText(R.string.defalut);
         ReyeDirectionResult.setText(R.string.defalut);
 
-        df= new DecimalFormat("##.##");//数据格式,float转string保留两位小数
+        df= new DecimalFormat("##.#");//数据格式,float转string保留1位小数
 
         NavigationView navView=(NavigationView)findViewById(R.id.nav_view);
         Toolbar toolbar=(Toolbar)findViewById(R.id.toolbar);
@@ -393,10 +394,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         ToastHandle.sendMessage(message);
         IsTimerRun=true;
 
-        LeyeRealtimeSPV.setText("0");
-        ReyeRealtimeSPV.setText("0");
-        LeyeMaxSPV.setText("0");
-        ReyeMaxSPV.setText("0");
+        LeyeXRealtimeAndMaxSPV.setText("0/0");
+        ReyeXRealtimeAndMaxSPV.setText("0/0");
+        LeyeYRealtimeAndMaxSPV.setText("0/0");
+        ReyeYRealtimeAndMaxSPV.setText("0/0");
         LeyeHighperiod.setText("0s");
         ReyeHighperiod.setText("0s");
         DiagnosticResult.setText(R.string.defalut);
@@ -762,10 +763,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     ToastHandle.sendMessage(message);
                     IsTimerRun=true;
 
-                    LeyeRealtimeSPV.setText("0");
-                    ReyeRealtimeSPV.setText("0");
-                    LeyeMaxSPV.setText("0");
-                    ReyeMaxSPV.setText("0");
+                    LeyeXRealtimeAndMaxSPV.setText("0/0");
+                    ReyeXRealtimeAndMaxSPV.setText("0/0");
+                    LeyeYRealtimeAndMaxSPV.setText("0/0");
+                    ReyeYRealtimeAndMaxSPV.setText("0/0");
                     LeyeHighperiod.setText("0s");
                     ReyeHighperiod.setText("0s");
                     DiagnosticResult.setText(R.string.defalut);
@@ -915,17 +916,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     calNum=0;
                     ++secondTime;
                     calculate.processLeyeX(secondTime);
+                    calculate.processLeyeY(secondTime);
 
-                    final float leyeRealtime=calculate.getRealTimeSPV(secondTime,true);
-                    final float leyeMax=calculate.getMaxSPV(true);
+                    final float leyeXRealtime=calculate.getRealTimeSPVX(secondTime,true);
+                    final float leyeXMax=calculate.getMaxSPVX(true);
+                    final float leyeYRealtime=calculate.getRealTimeSPVY(secondTime,true);
+                    final float leyeYMax=calculate.getMaxSPVY(true);
                     final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
                     final String period_L=getPeriod(maxSecond_L);
                     //强制在UI线程下更新
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            LeyeRealtimeSPV.setText(df.format(leyeRealtime));
-                            LeyeMaxSPV.setText(df.format(leyeMax));
+                            LeyeXRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(leyeXRealtime),df.format(leyeXMax)));
+                            LeyeYRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(leyeYRealtime),df.format(leyeYMax)));
                             LeyeHighperiod.setText(period_L);
                         }
                     });
@@ -962,10 +966,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     ++secondTime;
                     calculate.processLeyeX(secondTime);
                     calculate.processReyeX(secondTime);
-                    final float leyeRealtime=calculate.getRealTimeSPV(secondTime,true);
-                    final float reyeRealtime=calculate.getRealTimeSPV(secondTime,false);
-                    final float leyeMax=calculate.getMaxSPV(true);
-                    final float reyeMax=calculate.getMaxSPV(false);
+                    calculate.processLeyeY(secondTime);
+                    calculate.processReyeY(secondTime);
+                    final float leyeXRealtime=calculate.getRealTimeSPVX(secondTime,true);
+                    final float reyeXRealtime=calculate.getRealTimeSPVX(secondTime,false);
+                    final float leyeXMax=calculate.getMaxSPVX(true);
+                    final float reyeXMax=calculate.getMaxSPVX(false);
+                    final float leyeYRealtime=calculate.getRealTimeSPVY(secondTime,true);
+                    final float reyeYRealtime=calculate.getRealTimeSPVY(secondTime,false);
+                    final float leyeYMax=calculate.getMaxSPVY(true);
+                    final float reyeYMax=calculate.getMaxSPVY(false);
                     final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
                     final int maxSecond_R=calculate.getHighTidePeriod(false);//右眼
                     final String period_L=getPeriod(maxSecond_L);
@@ -974,10 +984,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            LeyeRealtimeSPV.setText(df.format(leyeRealtime));//保留两位小数点
-                            ReyeRealtimeSPV.setText(df.format(reyeRealtime));
-                            LeyeMaxSPV.setText(df.format(leyeMax));
-                            ReyeMaxSPV.setText(df.format(reyeMax));
+                            LeyeXRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(leyeXRealtime),df.format(leyeXMax)));//保留两位小数点
+                            ReyeXRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(reyeXRealtime),df.format(reyeXMax)));
+                            LeyeYRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(leyeYRealtime),df.format(leyeYMax)));
+                            ReyeYRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(reyeYRealtime),df.format(reyeYMax)));
                             LeyeHighperiod.setText(period_L);
                             ReyeHighperiod.setText(period_R);
                         }
@@ -995,16 +1005,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     {
                         //左眼
                         calculate.processLeyeX(secondTime);
-                        final float leyeRealtime=calculate.getRealTimeSPV(secondTime,true);
-                        final float leyeMax=calculate.getMaxSPV(true);
+                        calculate.processLeyeY(secondTime);
+                        final float leyeXRealtime=calculate.getRealTimeSPVX(secondTime,true);
+                        final float leyeXMax=calculate.getMaxSPVX(true);
+                        final float leyeYRealtime=calculate.getRealTimeSPVY(secondTime,true);
+                        final float leyeYMax=calculate.getMaxSPVY(true);
                         final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
                         final String period_L=getPeriod(maxSecond_L);
                         //强制在UI线程下更新
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                LeyeRealtimeSPV.setText(df.format(leyeRealtime));
-                                LeyeMaxSPV.setText(df.format(leyeMax));
+                                LeyeXRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(leyeXRealtime),df.format(leyeXMax)));//保留两位小数点
+                                LeyeYRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(leyeYRealtime),df.format(leyeYMax)));
                                 LeyeHighperiod.setText(period_L);
                             }
                         });
@@ -1013,16 +1026,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     {
                         //右眼
                         calculate.processReyeX(secondTime);
-                        final float reyeRealtime=calculate.getRealTimeSPV(secondTime,false);
-                        final float reyeMax=calculate.getMaxSPV(false);
+                        calculate.processReyeY(secondTime);
+                        final float reyeXRealtime=calculate.getRealTimeSPVX(secondTime,false);
+                        final float reyeXMax=calculate.getMaxSPVX(false);
+                        final float reyeYRealtime=calculate.getRealTimeSPVY(secondTime,false);
+                        final float reyeYMax=calculate.getMaxSPVY(false);
                         final int maxSecond_R=calculate.getHighTidePeriod(false);//右眼
                         final String period_R=getPeriod(maxSecond_R);
                         //强制在UI线程下更新
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                ReyeRealtimeSPV.setText(df.format(reyeRealtime));
-                                ReyeMaxSPV.setText(df.format(reyeMax));
+                                ReyeXRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(reyeXRealtime),df.format(reyeXMax)));
+                                ReyeYRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(reyeYRealtime),df.format(reyeYMax)));
                                 ReyeHighperiod.setText(period_R);
                             }
                         });
@@ -1058,6 +1074,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         addEntey(chart_x,FrameNum/(float)30,(float) (box.getX()-LeyeCenter.getX()),0);
                         addEntey(chart_y,FrameNum/(float)30,(float) (box.getY()-LeyeCenter.getY()),0);
                         calculate.addLeyeX((float) (box.getX()-LeyeCenter.getX()));
+                        calculate.addLeyeY((float) (box.getY()-LeyeCenter.getY()));
                     }
                 }
                 for(Box box:pro.Rcircles)
@@ -1076,6 +1093,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         addEntey(chart_x,FrameNum/(float)30,(float)(box.getX()-ReyeCenter.getX()),1);
                         addEntey(chart_y,FrameNum/(float)30,(float)(box.getY()-ReyeCenter.getY()),1);
                         calculate.addReyeX((float) (box.getX()-ReyeCenter.getX()));
+                        calculate.addReyeY((float) (box.getY()-ReyeCenter.getY()));
                     }
                 }
             }

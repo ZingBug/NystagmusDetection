@@ -1,5 +1,6 @@
 package com.example.lzh.nystagmus;
 
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -17,15 +18,22 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.PopupMenu;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.GlideBuilder;
 import com.bumptech.glide.request.target.SimpleTarget;
 import com.bumptech.glide.request.transition.Transition;
+import com.example.lzh.nystagmus.Utils.Box;
 import com.example.lzh.nystagmus.Utils.T;
 import com.example.lzh.nystagmus.Utils.Tool;
 import com.example.lzh.nystagmus.Utils.VideoInfo;
@@ -38,6 +46,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Vector;
 
+import static android.R.id.edit;
 import static android.media.MediaMetadataRetriever.METADATA_KEY_DATE;
 import static android.media.MediaMetadataRetriever.METADATA_KEY_DURATION;
 
@@ -46,6 +55,8 @@ public class VideoActivity extends AppCompatActivity {
     private List<VideoInfo> videoInfoList=new ArrayList<>();
     private RecyclerView recyclerView;
     private VideoInfoAdapter adapter;
+    private EditText searchInput;
+    private ImageButton searchClear;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,6 +83,43 @@ public class VideoActivity extends AppCompatActivity {
         LinearLayoutManager layoutManager=new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.addItemDecoration(new VideoItemDecoration());
+
+        searchClear=(ImageButton) findViewById(R.id.clear_search);
+        searchInput=(EditText) findViewById(R.id.search_input_edit);
+
+        searchClear.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v)
+            {
+                searchInput.getText().clear();//清空文本
+            }
+        });
+        searchClear.setVisibility(View.INVISIBLE);//不可见
+
+        searchInput.addTextChangedListener(new TextWatcher(){
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                //文本变化前
+            }
+            @Override
+            public void onTextChanged(CharSequence text, int start, int lengthBefore, int lengthAfter) {
+                //文本变化中
+                adapter.getFilter().filter(text);
+                if(text.length()>0)
+                {
+                    searchClear.setVisibility(View.VISIBLE);
+                }
+                else
+                {
+                    searchClear.setVisibility(View.INVISIBLE);
+                }
+
+            }
+            @Override
+            public void afterTextChanged(Editable s) {
+                //文本变化后
+            }
+        });
 
     }
     @Override
@@ -116,12 +164,16 @@ public class VideoActivity extends AppCompatActivity {
             {
                 //短暂按监听
                 //T.showShort(VideoActivity.this,"短");
+                searchInput.clearFocus();//使EditText失去焦点
+                hideInputMethod(VideoActivity.this,getCurrentFocus());//让软键盘隐藏
             }
             @Override
             public void onItemLongOnClick(View view,int pos)
             {
                 //长按监听
                 //T.showShort(VideoActivity.this,"长");
+                searchInput.clearFocus();//使EditText失去焦点
+                hideInputMethod(VideoActivity.this,getCurrentFocus());//让软键盘隐藏
                 showPopMenu(view,pos);
             }
         });
@@ -263,5 +315,14 @@ public class VideoActivity extends AppCompatActivity {
                 }
             }
         }).setNegativeButton("取消",null).show();
+    }
+    private Boolean hideInputMethod(Context context,View v)
+    {
+        InputMethodManager imm = (InputMethodManager) context
+                .getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            return imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
+        }
+        return false;
     }
 }

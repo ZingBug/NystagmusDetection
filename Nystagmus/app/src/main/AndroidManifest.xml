@@ -29,7 +29,8 @@
         <activity
             android:name=".SettingsActivity"
             android:windowSoftInputMode="adjustResize" />
-        <activity android:name=".VideoActivity"></activity>
+        <activity android:name=".VideoActivity"
+            android:windowSoftInputMode="adjustUnspecified|stateHidden"/>
     </application>
 
 </manifest>

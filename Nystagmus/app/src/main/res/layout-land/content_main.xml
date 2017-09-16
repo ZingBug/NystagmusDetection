@@ -16,7 +16,8 @@
             android:layout_weight="1"
             android:paddingRight="5dp"
             android:paddingLeft="5dp"
-            android:paddingBottom="1dp">
+            android:paddingBottom="1dp"
+            android:layout_gravity="center_vertical">
             <TextView
                 android:layout_width="0dp"
                 android:layout_weight="1"
@@ -64,17 +65,15 @@
                         android:layout_height="0dp"
                         android:layout_weight="1"
                         android:gravity="center_vertical"
-                        android:text="当前SPV值："
+                        android:text="水平SPV值："
                         android:textSize="16sp" />
-
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="0dp"
                         android:layout_weight="1"
                         android:gravity="center_vertical"
-                        android:text="最大SPV值："
+                        android:text="垂直SPV值："
                         android:textSize="16sp" />
-
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="0dp"
@@ -92,26 +91,26 @@
                 </LinearLayout>
                 <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_weight="2"
                     android:layout_height="match_parent"
+                    android:layout_weight="3"
                     android:gravity="center"
                     android:orientation="vertical">
                     <TextView
-                        android:id="@+id/leyeRealtimeSPV"
+                        android:id="@+id/leyeXRealtimeAndMaxSPV"
                         android:layout_width="wrap_content"
                         android:layout_height="0dp"
                         android:layout_weight="1"
                         android:gravity="center"
                         android:textColor="@color/black"
-                        android:textSize="16sp"/>
+                        android:textSize="16sp" />
                     <TextView
-                        android:id="@+id/leyeMaxSPV"
+                        android:id="@+id/leyeYRealtimeAndMaxSPV"
                         android:layout_width="wrap_content"
                         android:layout_height="0dp"
                         android:layout_weight="1"
                         android:gravity="center"
                         android:textColor="@color/black"
-                        android:textSize="16sp"/>
+                        android:textSize="16sp" />
                     <TextView
                         android:id="@+id/leyeHighperiod"
                         android:layout_width="wrap_content"
@@ -119,7 +118,7 @@
                         android:layout_weight="1"
                         android:gravity="center"
                         android:textColor="@color/black"
-                        android:textSize="16sp"/>
+                        android:textSize="16sp" />
                     <TextView
                         android:id="@+id/leyeDirection"
                         android:layout_width="wrap_content"
@@ -127,7 +126,7 @@
                         android:layout_weight="1"
                         android:gravity="center"
                         android:textColor="@color/black"
-                        android:textSize="16sp"/>
+                        android:textSize="16sp" />
                 </LinearLayout>
             </LinearLayout>
             <LinearLayout
@@ -159,17 +158,15 @@
                         android:layout_height="0dp"
                         android:layout_weight="1"
                         android:gravity="center_vertical"
-                        android:text="当前SPV值："
+                        android:text="水平SPV值："
                         android:textSize="16sp" />
-
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="0dp"
                         android:layout_weight="1"
                         android:gravity="center_vertical"
-                        android:text="最大SPV值："
+                        android:text="垂直SPV值："
                         android:textSize="16sp" />
-
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="0dp"
@@ -187,12 +184,12 @@
                 </LinearLayout>
                 <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_weight="2"
+                    android:layout_weight="3"
                     android:layout_height="match_parent"
                     android:gravity="center"
                     android:orientation="vertical">
                     <TextView
-                        android:id="@+id/reyeRealtimeSPV"
+                        android:id="@+id/reyeXRealtimeAndMaxSPV"
                         android:layout_width="wrap_content"
                         android:layout_height="0dp"
                         android:layout_weight="1"
@@ -200,7 +197,7 @@
                         android:textColor="@color/black"
                         android:textSize="16sp"/>
                     <TextView
-                        android:id="@+id/reyeMaxSPV"
+                        android:id="@+id/reyeYRealtimeAndMaxSPV"
                         android:layout_width="wrap_content"
                         android:layout_height="0dp"
                         android:layout_weight="1"

@@ -9,6 +9,8 @@ import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Filter;
+import android.widget.Filterable;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -17,16 +19,22 @@ import com.example.lzh.nystagmus.MainActivity;
 import com.example.lzh.nystagmus.R;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
+
+import static android.R.attr.data;
 
 
 /**
  * Created by LZH on 2017/9/12.
  */
 
-public class VideoInfoAdapter extends RecyclerView.Adapter<VideoInfoAdapter.ViewHolder> {
+public class VideoInfoAdapter extends RecyclerView.Adapter<VideoInfoAdapter.ViewHolder> implements Filterable {
     private List<VideoInfo> mVideoInfoList;
     private Context mContext;
+
+    private List<VideoInfo>  mOriginalValues;
+    private final Object mLock=new Object();
 
     static class ViewHolder extends RecyclerView.ViewHolder
     {
@@ -47,8 +55,10 @@ public class VideoInfoAdapter extends RecyclerView.Adapter<VideoInfoAdapter.View
     }
     public VideoInfoAdapter(Context context,List<VideoInfo> videoInfoList)
     {
-        mVideoInfoList=videoInfoList;
-        mContext=context;
+        this.mVideoInfoList=videoInfoList;
+        //this.mOriginalValues=new ArrayList<>();
+        //mOriginalValues.addAll(videoInfoList);
+        this.mContext=context;
     }
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent,int viweType)
@@ -197,5 +207,109 @@ public class VideoInfoAdapter extends RecyclerView.Adapter<VideoInfoAdapter.View
         }
         notifyDataSetChanged();
         return true;
+    }
+    @Override
+    public Filter getFilter()
+    {
+        return new Filter() {
+            @Override
+            protected FilterResults performFiltering(CharSequence constraint) {
+                //初始化过滤结果对象
+                FilterResults results=new FilterResults();
+                //假如搜索为空的时候，讲复制的数据添加到原始数据，用于继续过滤操作
+                if(mOriginalValues==null)
+                {
+                    synchronized (mLock)
+                    {
+                        //// 将视频信息集合转换给这个原始数据的ArrayList
+                        mOriginalValues=new ArrayList<>(mVideoInfoList);
+                    }
+                }
+                //关键词为空的时候，搜索结果为复制的结果
+                if(constraint==null||constraint.length()==0)
+                {
+                    synchronized (mLock)
+                    {
+                        List<VideoInfo> list=new ArrayList<>(mOriginalValues);
+                        results.values=list;
+                        results.count=list.size();
+                    }
+                }
+                else
+                {
+                    //做正式的筛选
+                    String prefixString=constraint.toString().toLowerCase();
+                    // 声明一个临时的集合对象 将原始数据赋给这个临时变量
+                    final List<VideoInfo> values=mOriginalValues;
+                    final int count=values.size();
+                    //新的集合对象
+                    final List<VideoInfo> newValues=new ArrayList<>(count);
+
+                    for(int i=0;i<count;i++)
+                    {
+                        final VideoInfo value=values.get(i);
+                        String name=value.getName();
+                        if(name.contains(prefixString))
+                        {
+                            //如果含有关键词，加入
+                            newValues.add(value);
+                        }
+                        else
+                        {
+                            //可能多个关键字
+                            final String[] words=prefixString.split(" ");
+                            boolean isContain=true;
+                            for(int j=0;j<words.length;j++)
+                            {
+                                if(!words[j].equals(""))
+                                {
+                                    if(!name.contains(words[j]))
+                                    {
+                                        isContain=false;
+                                        break;
+                                    }
+                                }
+                            }
+                            if(isContain)
+                            {
+                                newValues.add(value);
+                            }
+                        }
+                    }
+                    results.values=newValues;
+                    results.count=newValues.size();
+                }
+                return results;
+            }
+
+            @Override
+            protected void publishResults(CharSequence constraint, FilterResults results) {
+                mVideoInfoList.clear();//清除原始数据
+                mVideoInfoList.addAll((List<VideoInfo>)results.values);//将过滤结果添加到这个对象
+                if(results.count>0)
+                {
+                    notifyDataSetChanged();//有关键字的时候刷新数据
+                }
+                else
+                {
+                    if(constraint.length()!=0)
+                    {
+                        //关键字不为零但是过滤结果为空刷新数据
+                        notifyDataSetChanged();
+                    }
+                    else
+                    {
+                        //加载复制的数据，即为最初的数据
+                        setVideoInfo(mOriginalValues);
+                    }
+                }
+            }
+        };
+    }
+    private void setVideoInfo(List<VideoInfo> list)
+    {
+        this.mVideoInfoList=list;
+        mOriginalValues.clear();
+        notifyDataSetChanged();
     }
 }
