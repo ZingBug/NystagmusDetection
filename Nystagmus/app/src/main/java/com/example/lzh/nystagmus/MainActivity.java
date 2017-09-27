@@ -252,6 +252,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         L.d("项目打开");
     }
     @Override
+    public void onBackPressed()
+    {
+        //拦截Back键，使App进入后台而不是关闭
+        Intent launcherIntent=new Intent(Intent.ACTION_MAIN);
+        launcherIntent.addCategory(Intent.CATEGORY_HOME);
+        startActivity(launcherIntent);
+    }
+    @Override
     public void onClick(View v)
     {
         switch (v.getId())
