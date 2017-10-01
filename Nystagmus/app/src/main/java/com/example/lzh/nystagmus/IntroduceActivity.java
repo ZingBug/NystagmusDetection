@@ -77,24 +77,9 @@ public class IntroduceActivity extends AppCompatActivity {
         if(!bingLoad&&isNetworkAvailable()&&ping())
         {
             //有网络连接并且连接到外网
-
-            Calendar now = Calendar.getInstance();
-            int data=now.get(Calendar.DATE);
-            int month=now.get(Calendar.MONTH)+1;
-            if(data==16&&month==8)
-            {
-                Glide.with(this).load(Tool.EggRoseAddress).into(bingPicImg);
-            }
-            else if (data==11&month==9)
-            {
-                Glide.with(this).load(Tool.EggCakeAddress).into(bingPicImg);
-            }
-            else
-            {
-                bingLoad=true;
-                loadBingPic();
-                L.d("已更新图片");
-            }
+            bingLoad=true;
+            loadBingPic();
+            L.d("已更新图片");
         }
         else
         {
