@@ -107,6 +107,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private LineChart chart_x;//X波形图
     private LineChart chart_y;//y波形图
+    private LineChart chart_rotation;//旋转图
     private int[] colors=new int[]{Color.rgb(255, 69, 0), Color.rgb(0, 128, 0)};//自定义颜色，第一种为橘黄色，第二种为纯绿色
 
     private SharedPreferences pref;//调用存储文件
@@ -138,6 +139,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     /*视频保存名称*/
     private String VideoStorgeName;
     private CoordinatorLayout MainContainer;
+
+    /*旋转曲线*/
+    private double LeyePreX;
+    private double LeyePreY;
+    private double ReyePreX;
+    private double ReyePreY;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -236,9 +243,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         chart_x=(LineChart)findViewById(R.id.xchart);
         chart_y=(LineChart)findViewById(R.id.ychart);
+        chart_rotation=(LineChart) findViewById(R.id.rotation_chart);
 
         initialChart(chart_x,"水平位置");//初始化波形图
         initialChart(chart_y,"垂直位置");//初始化波形图
+        initialChart(chart_rotation,"旋转曲线");//初始化旋转曲线
 
         pref=getSharedPreferences("CameraAddress",MODE_PRIVATE);
         Tool.AddressLeftEye=pref.getString("LeftCameraAddress",Tool.AddressLeftEye);
@@ -386,6 +395,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         /*下面是参数初始化*/
         clearEntey(chart_x);
         clearEntey(chart_y);
+        clearEntey(chart_rotation);
         IsLeyeCenter=false;
         IsReyeCenter=false;
         LeyeCenter=new Box();
@@ -754,6 +764,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     /*下面是参数初始化*/
                     clearEntey(chart_x);
                     clearEntey(chart_y);
+                    clearEntey(chart_rotation);
                     IsLeyeCenter=false;
                     IsReyeCenter=false;
                     LeyeCenter=new Box();
@@ -1075,14 +1086,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         IsLeyeCenter=true;
                         LeyeCenter.setX(box.getX());
                         LeyeCenter.setY(box.getY());
+                        LeyePreX= box.getX();
+                        LeyePreY= box.getY();
                     }
                     else
                     {
                         //后续相对地址是基于第一帧位置的
+                        double tempL=Math.atan((box.getY()-LeyePreY)/(box.getX()-LeyePreX));
+                        if(Double.isNaN(tempL))
+                        {
+                            tempL=0;
+                        }
+                        addEntey(chart_rotation,FrameNum/(float)30,(float) tempL,0);
                         addEntey(chart_x,FrameNum/(float)30,(float) (box.getX()-LeyeCenter.getX()),0);
                         addEntey(chart_y,FrameNum/(float)30,(float) (box.getY()-LeyeCenter.getY()),0);
                         calculate.addLeyeX((float) (box.getX()-LeyeCenter.getX()));
                         calculate.addLeyeY((float) (box.getY()-LeyeCenter.getY()));
+                        LeyePreX= box.getX();
+                        LeyePreY= box.getY();
                     }
                 }
                 for(Box box:pro.Rcircles)
@@ -1094,14 +1115,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         IsReyeCenter=true;
                         ReyeCenter.setX(box.getX());
                         ReyeCenter.setY(box.getY());
+                        ReyePreX= box.getX();
+                        ReyePreY= box.getY();
                     }
                     else
                     {
                         //后续相对地址是基于第一帧位置的
+                        double tempR=Math.atan((box.getY()-ReyePreY)/(box.getX()-ReyePreX));
+                        if(Double.isNaN(tempR))
+                        {
+                            tempR=0;
+                        }
+                        addEntey(chart_rotation,FrameNum/(float)30,(float) tempR,1);
                         addEntey(chart_x,FrameNum/(float)30,(float)(box.getX()-ReyeCenter.getX()),1);
                         addEntey(chart_y,FrameNum/(float)30,(float)(box.getY()-ReyeCenter.getY()),1);
                         calculate.addReyeX((float) (box.getX()-ReyeCenter.getX()));
                         calculate.addReyeY((float) (box.getY()-ReyeCenter.getY()));
+                        ReyePreX= box.getX();
+                        ReyePreY= box.getY();
                     }
                 }
             }

@@ -20,7 +20,7 @@ import static android.R.attr.y;
  * Glide缓存工具类
  * Glide自带清除缓存的功能,分别对应Glide.get(context).clearDiskCache();(清除磁盘缓存)与Glide.get(context).clearMemory();(清除内存缓存)两个方法.
  * 其中clearDiskCache()方法必须运行在子线程,clearMemory()方法必须运行在主线程,
- * Created by LZH on 2017/9/14.
+ * Created by HJY on 2017/9/14.
  */
 
 public class GlideCacheUtil {

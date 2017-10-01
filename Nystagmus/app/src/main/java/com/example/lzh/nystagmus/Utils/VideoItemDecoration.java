@@ -5,7 +5,7 @@ import android.support.v7.widget.RecyclerView;
 import android.view.View;
 
 /**
- * Created by LZH on 2017/9/13.
+ * Created by HJY on 2017/9/13.
  */
 
 public class VideoItemDecoration extends RecyclerView.ItemDecoration {

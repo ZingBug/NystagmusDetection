@@ -4,7 +4,7 @@ import android.util.Log;
 
 /**
  * 封装简化Log用法
- * Created by LZH on 2017/7/17.
+ * Created by HJY on 2017/7/17.
  */
 
 public class L {

@@ -26,7 +26,7 @@ import static android.R.attr.data;
 
 
 /**
- * Created by LZH on 2017/9/12.
+ * Created by HJY on 2017/9/12.
  */
 
 public class VideoInfoAdapter extends RecyclerView.Adapter<VideoInfoAdapter.ViewHolder> implements Filterable {

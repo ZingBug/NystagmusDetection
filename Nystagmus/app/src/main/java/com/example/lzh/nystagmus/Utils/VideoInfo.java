@@ -5,7 +5,7 @@ import android.graphics.Bitmap;
 import android.widget.ImageView;
 
 /**
- * Created by LZH on 2017/9/12.
+ * Created by HJY on 2017/9/12.
  */
 
 public class VideoInfo implements Cloneable {

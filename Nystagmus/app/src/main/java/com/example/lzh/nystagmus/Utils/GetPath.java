@@ -12,7 +12,7 @@ import android.provider.MediaStore;
 
 /**
  * 用于获取照片或者视频的绝对路径
- * Created by LZH on 2017/7/17.
+ * Created by HJY on 2017/7/17.
  */
 
 public class GetPath {

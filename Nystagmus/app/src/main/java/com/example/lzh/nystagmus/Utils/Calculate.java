@@ -24,7 +24,7 @@ import static android.R.attr.yesNoPreferenceStyle;
 import static com.example.lzh.nystagmus.Utils.Tool.HighTidePeriodSecond;
 
 /**
- * Created by LZH on 2017/8/4.
+ * Created by HJY on 2017/8/4.
  */
 
 public class Calculate {

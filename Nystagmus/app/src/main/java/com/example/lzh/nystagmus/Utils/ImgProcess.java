@@ -62,7 +62,7 @@ import static org.bytedeco.javacpp.opencv_ml.SVM.C;
 
 /**
  * 与图像处理相关的函数
- * Created by LZH on 2017/7/17.
+ * Created by HJY on 2017/7/17.
  */
 
 public class ImgProcess {
@@ -84,6 +84,7 @@ public class ImgProcess {
     private Scalar blue=new Scalar(0,0,255,0);
     private Scalar green=new Scalar(0,255,0,0);
     private Scalar red=new Scalar(255,0,0,0);
+    private CvScalar cvwhite=new CvScalar(255,255,255,0);
     private CvScalar cvblue=new CvScalar(0,0,255,0);
     private CvScalar cvgreen=new CvScalar(0,255,0,0);
     private CvScalar cvred=new CvScalar(255,0,0,0);
@@ -270,9 +271,32 @@ public class ImgProcess {
         {
             CvPoint center=new CvPoint((int)Math.round(circles.get(i).getX()),(int)Math.round(circles.get(i).getY()));
             int radius=(int)circles.get(i).getR();
-            opencv_imgproc.cvCircle(midImage,center,1,cvblue,-1,8,0);//画圆心
-            opencv_imgproc.cvCircle(midImage,center,radius,cvred,1,8,0);//画圆轮廓
+            //opencv_imgproc.cvCircle(midImage,center,1,cvblue,-1,8,0);//画圆心
+            //opencv_imgproc.cvCircle(midImage,center,radius,cvred,1,8,0);//画圆轮廓
+            drawCross(midImage,center,cvwhite,1);//绘制十字光标
         }
+    }
+
+    /**
+     * 绘制十字光标
+     * @param img 源图像
+     * @param point 十字点
+     * @param color 颜色
+     * @param thickness 线宽
+     */
+    private void drawCross(IplImage img,CvPoint point,CvScalar color,int thickness)
+    {
+        int heigth=img.height();
+        int width=img.width();
+        CvPoint above=new CvPoint(point.x(),0);
+        CvPoint below=new CvPoint(point.x(),heigth);
+        CvPoint left=new CvPoint(0,point.y());
+        CvPoint right=new CvPoint(width,point.y());
+        //绘制横线
+        opencv_imgproc.cvLine(img,left,right,color,thickness,8,0);
+        //绘制竖线
+        opencv_imgproc.cvLine(img,above,below,color,thickness,8,0);
+        return;
     }
     /**
      * 眼睛图像识别处理
