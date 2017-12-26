@@ -54,6 +54,7 @@ import static org.bytedeco.javacpp.opencv_imgproc.CV_CHAIN_APPROX_SIMPLE;
 import static org.bytedeco.javacpp.opencv_imgproc.CV_POLY_APPROX_DP;
 import static org.bytedeco.javacpp.opencv_imgproc.CV_RETR_CCOMP;
 import static org.bytedeco.javacpp.opencv_imgproc.CV_RETR_LIST;
+import static org.bytedeco.javacpp.opencv_imgproc.HOUGH_GRADIENT;
 import static org.bytedeco.javacpp.opencv_imgproc.boundingRect;
 import static org.bytedeco.javacpp.opencv_imgproc.cvApproxPoly;
 import static org.bytedeco.javacpp.opencv_imgproc.cvContourPerimeter;
@@ -88,10 +89,11 @@ public class ImgProcess {
     private CvScalar cvblue=new CvScalar(0,0,255,0);
     private CvScalar cvgreen=new CvScalar(0,255,0,0);
     private CvScalar cvred=new CvScalar(255,0,0,0);
+    private CvScalar cvblack=new CvScalar(0,0,0,0);
     private Mat OriginalLeftEye=new Mat();//用于保存原始图像
     private Mat OriginalRightEye=new Mat();//用于保存原始图像
-    public Vector<Box> Lcircles=new Vector<Box>();
-    public Vector<Box> Rcircles=new Vector<Box>();
+    private Vector<Box> Lcircles=new Vector<Box>();
+    private Vector<Box> Rcircles=new Vector<Box>();
     private IplImage LeyeImage;
     private IplImage ReyeImage;
 
@@ -173,14 +175,34 @@ public class ImgProcess {
      */
     private Mat GrayDetect(Mat grayimg0)
     {
-        Mat grayout=new Mat();
         Mat grayimg =new Mat(grayimg0);
 
         opencv_imgproc.cvtColor(grayimg,grayimg,opencv_imgproc.COLOR_RGB2GRAY);//灰度化处理
         opencv_imgproc.medianBlur(grayimg,grayimg,9);//中值滤波
-        opencv_imgproc.blur(grayimg,grayimg,size);
-        grayout=Binary(grayimg,Tool.RecognitionGrayValue);
-        return grayout;
+        //opencv_imgproc.blur(grayimg,grayimg,size);//均值滤波
+
+        /*重构开运算，去除光斑*/
+        Mat element_open=opencv_imgproc.getStructuringElement(opencv_imgproc.MORPH_ELLIPSE,new Size(15,15));//形态学开运算的内核
+        opencv_imgproc.morphologyEx(grayimg,grayimg,opencv_imgproc.MORPH_OPEN,element_open);//开运算
+
+        /*闭运算，去除睫毛*/
+        Mat element_close=opencv_imgproc.getStructuringElement(opencv_imgproc.MORPH_ELLIPSE,new Size(9,9));//形态学闭运算的内核
+        opencv_imgproc.morphologyEx(grayimg,grayimg,opencv_imgproc.MORPH_CLOSE,element_close);
+
+        /*顶帽+低帽变换，将源图像加上低帽变换再减去顶帽变换，用以增强对比度*/
+        Mat element_hot=opencv_imgproc.getStructuringElement(opencv_imgproc.MORPH_ELLIPSE,new Size(5,5));
+        Mat topHat=new Mat();
+        Mat bottomHat=new Mat();
+        Mat tempHat=new Mat();
+        opencv_imgproc.morphologyEx(grayimg,topHat,opencv_imgproc.MORPH_TOPHAT,element_hot);//顶帽运算
+        opencv_imgproc.morphologyEx(grayimg,bottomHat,opencv_imgproc.MORPH_BLACKHAT,element_hot);//黑帽运算
+        opencv_core.addWeighted(grayimg,1,bottomHat,1,0,tempHat);
+        opencv_core.addWeighted(tempHat,1,topHat,-1,0,grayimg);
+
+        Mat grayout=Binary(grayimg,Tool.RecognitionGrayValue);//阈值
+
+        Mat grayout1=RemoveSmallRegion(grayout);//去除小面积
+        return grayout1;
     }
     /**
      * 二值化处理
@@ -191,8 +213,137 @@ public class ImgProcess {
     private Mat Binary(Mat binaryimg, int value)
     {
         Mat binaryout=new Mat();
-        opencv_imgproc.threshold(binaryimg,binaryout,value,255,opencv_imgproc.THRESH_BINARY);
+        opencv_imgproc.threshold(binaryimg,binaryout,value,255,opencv_imgproc.THRESH_BINARY_INV);
         return binaryout;
+    }
+    /**
+     * 去除小面积
+     * @param src 源图像
+     * @return 去除小面积后的图像
+     */
+    private Mat RemoveSmallRegion(Mat src)
+    {
+        Mat dst=new Mat();
+        src.copyTo(dst);
+        IplImage srcImage=new IplImage(dst);
+
+        CvMemStorage storage=CvMemStorage.create();
+        CvSeq cvContour=new CvSeq(null);
+
+        CvRect rect;
+        double tempArea;
+        opencv_imgproc.cvFindContours(srcImage,storage,cvContour,Loader.sizeof(CvContour.class),opencv_imgproc.CV_RETR_CCOMP,opencv_imgproc.CV_CHAIN_APPROX_NONE);
+        dst=new Mat();
+        src.copyTo(dst);
+        srcImage=new IplImage(dst);
+        double maxArea=0;
+        CvSeq tempContour=new CvSeq(cvContour);
+        while (tempContour!=null&&!tempContour.isNull())
+        {
+            tempArea=opencv_imgproc.cvContourArea(tempContour);
+            if(tempArea>maxArea)
+            {
+                maxArea=tempArea;
+            }
+            tempContour=tempContour.h_next();
+        }
+        int nCol=src.cols();
+        int nRow=src.rows();
+        while (cvContour!=null&&!cvContour.isNull())
+        {
+            rect=opencv_imgproc.cvBoundingRect(cvContour);
+            if(rect.x()==1||rect.x()==nCol)
+            {
+                CvPoint point=new CvPoint(rect.x()+rect.width()/2,rect.y()+rect.height()/2);
+                opencv_imgproc.cvFloodFill(srcImage,point,cvblack);
+            }
+            tempArea=opencv_imgproc.cvContourArea(cvContour);
+            if(tempArea<maxArea)
+            {
+                CvPoint point=new CvPoint(rect.x()+rect.width()/2,rect.y()+rect.height()/2);
+                opencv_imgproc.cvFloodFill(srcImage,point,cvblack);
+            }
+            cvContour=cvContour.h_next();
+        }
+        return dst;
+    }
+    /**
+     * 寻找图像质心
+     * @param src 源图像
+     * @return 质心坐标
+     */
+    private Box GravityCenter(Mat src)
+    {
+        Box center=new Box(0,0,0);
+        IplImage srcImg=new IplImage(src);
+        opencv_imgproc.CvMoments moments=new opencv_imgproc.CvMoments();
+        opencv_imgproc.cvMoments(srcImg,moments);
+        double m00=opencv_imgproc.cvGetSpatialMoment(moments,0,0);
+        if(m00==0)
+        {
+            return center;
+        }
+        double m10=opencv_imgproc.cvGetSpatialMoment(moments,1,0);
+        double m01=opencv_imgproc.cvGetSpatialMoment(moments,0,1);
+        center.setX(m10/m00);
+        center.setY(m01/m00);
+        return center;
+    }
+    /**
+     * 寻找瞳孔圆心
+     * @param src 源图像
+     * @param points 源图像轮廓
+     * @return 瞳孔圆心
+     */
+    private Box CircleFit(Mat src,Vector<Point> points)
+    {
+        Box center=GravityCenter(src);//获取质心坐标
+        Point top=new Point(0,src.cols());
+        Point bottom=new Point(0,0);
+        Point right=new Point(0,0);
+        Point left=new Point(src.cols(),0);
+        long sum=points.size();
+        int x,y;
+        for(int i=0;i<sum;i++)
+        {
+            //取得四个顶点
+            x=points.get(i).x();
+            y=points.get(i).y();
+            if(x<left.x())
+            {
+                //左侧
+                left=points.get(i);
+            }
+            if(x>right.x())
+            {
+                right=points.get(i);
+            }
+            if(y<top.y())
+            {
+                top=points.get(i);
+            }
+            if(y>bottom.y())
+            {
+                bottom=points.get(i);
+            }
+        }
+        double width=bottom.y()-top.y();
+        double length=right.x()-left.x();
+        if(length/width>1.15)
+        {
+            //眼皮遮挡眼球一部分
+            double R=(right.x()-left.x()+(bottom.y()-left.y()))/3.0;
+            double Y=(left.y()+bottom.y()-R)/2.0;
+            center.setY(Y);
+            center.setR(R);
+        }
+        else
+        {
+            //近似圆
+            Box fitCenter=circleLeastFit(points);
+            center.setR(fitCenter.getR());
+        }
+        return center;
     }
     /**
      * 二乘法拟合圆
@@ -249,6 +400,20 @@ public class ImgProcess {
         box.setR(sqrt(a*a + b*b - 4 * c) / 2);
         return box;
     }
+
+    /**
+     * 霍夫检测圆，测试用，目前有bug
+     * @param img 输入图像
+     * @param minradius 最小半径
+     * @param maxradius 最大半径
+     * @return 圆心
+     */
+    private Point hough(org.bytedeco.javacpp.helper.opencv_core.CvArr img, double minradius, double maxradius)
+    {
+        Point point=new Point();
+        opencv_imgproc.cvHoughCircles(img,point,HOUGH_GRADIENT,minradius,maxradius);
+        return point;
+    }
     /**
      * 边缘检测
      * @param edgeimg 检测图像
@@ -271,12 +436,11 @@ public class ImgProcess {
         {
             CvPoint center=new CvPoint((int)Math.round(circles.get(i).getX()),(int)Math.round(circles.get(i).getY()));
             int radius=(int)circles.get(i).getR();
-            //opencv_imgproc.cvCircle(midImage,center,1,cvblue,-1,8,0);//画圆心
-            //opencv_imgproc.cvCircle(midImage,center,radius,cvred,1,8,0);//画圆轮廓
+            opencv_imgproc.cvCircle(midImage,center,1,cvblue,-1,8,0);//画圆心
+            opencv_imgproc.cvCircle(midImage,center,radius,cvred,1,8,0);//画圆轮廓
             drawCross(midImage,center,cvwhite,1);//绘制十字光标
         }
     }
-
     /**
      * 绘制十字光标
      * @param img 源图像
@@ -303,12 +467,10 @@ public class ImgProcess {
      */
     public void ProcessSeparate()
     {
-        Mat Rgryaimg;
-        Mat Lgrayimg;
+        Mat Rgryaimg=new Mat();
+        Mat Lgrayimg=new Mat();
         Mat Redgeimg;
         Mat Ledgeimg;
-        Mat Rhiberarchy=new Mat();
-        Mat Lhiberarchy=new Mat();
         double temparea;
         boolean IsLeye=false;
         boolean IsReye=false;
@@ -319,8 +481,8 @@ public class ImgProcess {
         CvSeq cvRcontour=new CvSeq(null);
         CvSeq cvtempLcontour=new CvSeq(null);
         CvSeq cvtempRcontour=new CvSeq(null);
-        CvSeq cvLcontourKeep=new CvSeq(null);
-        CvSeq cvRcontourKeep=new CvSeq(null);
+        CvSeq cvLcontourKeep=new CvSeq(null);//用于绘制轮廓
+        CvSeq cvRcontourKeep=new CvSeq(null);//用于绘制轮廓
         IplImage LmatImage;
         IplImage RmatImage;
 
@@ -331,8 +493,6 @@ public class ImgProcess {
             Redgeimg=EdgeDetect(Rgryaimg);
             RmatImage=new IplImage(Redgeimg);
             opencv_imgproc.cvFindContours(RmatImage,Rstorage,cvRcontour,Loader.sizeof(CvContour.class), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE);
-            cvRcontourKeep=new CvSeq(cvRcontour);
-            //opencv_imgproc.findContours(Redgeimg,Rcontours,Rhiberarchy,opencv_imgproc.RETR_CCOMP,opencv_imgproc.CHAIN_APPROX_NONE);
             IsReye=true;
         }
         if(EyeNum==Tool.NOT_REYE||EyeNum==Tool.ALL_EYE||EyeNum==Tool.VEDIO_EYE||EyeNum==Tool.VEDIO_ONLY_EYE)
@@ -342,8 +502,6 @@ public class ImgProcess {
             Ledgeimg=EdgeDetect(Lgrayimg);
             LmatImage=new IplImage(Ledgeimg);
             opencv_imgproc.cvFindContours(LmatImage,Lstorage,cvLcontour,Loader.sizeof(CvContour.class), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE);
-            cvLcontourKeep=new CvSeq(cvLcontour);
-            //opencv_imgproc.findContours(Ledgeimg,Lcontours,Lhiberarchy,opencv_imgproc.RETR_CCOMP,opencv_imgproc.CHAIN_APPROX_NONE);
             IsLeye=true;
         }
         if(!cvLcontour.isNull()&&cvLcontour.elem_size()>0&&IsLeye)
@@ -362,6 +520,7 @@ public class ImgProcess {
             }
             if(!cvtempLcontour.isNull())
             {
+                cvLcontourKeep=new CvSeq(cvtempLcontour);
                 Vector<Point> leftPoints=new Vector<Point>();
                 for(int i=0;i<cvtempLcontour.total();++i)
                 {
@@ -372,8 +531,7 @@ public class ImgProcess {
                 Lrect=opencv_imgproc.cvBoundingRect(cvtempLcontour);
                 if((Lrect.width()/(float)Lrect.height())<EyeRatio&&(Lrect.height()/(float)Lrect.width())<EyeRatio&&Lrect.width()>0&&Lrect.height()>0)
                 {
-                    //此处有BUG
-                    Box Lbox=circleLeastFit(leftPoints);//左眼拟合圆检测
+                    Box Lbox=CircleFit(Lgrayimg,leftPoints);//左眼拟合圆检测
                     if(Lbox.getR()!=0)
                     {
                         //如果半径不为0
@@ -399,6 +557,7 @@ public class ImgProcess {
             }
             if(!cvtempRcontour.isNull())
             {
+                cvRcontourKeep=new CvSeq(cvtempRcontour);
                 Vector<Point> rightPoints=new Vector<Point>();
                 for(int i=0;i<cvtempRcontour.total();++i)
                 {
@@ -409,7 +568,7 @@ public class ImgProcess {
                 Rrect=opencv_imgproc.cvBoundingRect(cvtempRcontour);
                 if((Rrect.width()/(float)Rrect.height())<EyeRatio&&(Rrect.height()/(float)Rrect.width())<EyeRatio&&Rrect.width()>0&&Rrect.height()>0)
                 {
-                    Box Rbox=circleLeastFit(rightPoints);//左眼拟合圆检测
+                    Box Rbox=CircleFit(Rgryaimg,rightPoints);//左眼拟合圆检测
                     if(Rbox.getR()!=0)
                     {
                         //如果半径不为0
@@ -429,17 +588,21 @@ public class ImgProcess {
 
         if(IsLeye)
         {
-            //opencv_imgproc.drawContours(Leye,Lcontours,LmaxAreaIndex,green);//使用opencv绘制轮廓
             //opencv_imgproc.cvDrawContours(LeyeImage,cvLcontourKeep,cvgreen,cvgreen,1);//使用javacv绘制轮廓
         }
         if(IsReye)
         {
-            //opencv_imgproc.drawContours(Reye,Rcontours,RmaxAreaIndex,green);//使用opencv绘制轮廓
             //opencv_imgproc.cvDrawContours(ReyeImage,cvRcontourKeep,cvgreen,cvgreen,1);//使用javacv绘制轮廓
         }
         Reye=new Mat(ReyeImage);
         Leye=new Mat(LeyeImage);
-
-
+    }
+    public Iterable<Box> Lcircles()
+    {
+        return Lcircles;
+    }
+    public Iterable<Box> Rcircles()
+    {
+        return Rcircles;
     }
 }

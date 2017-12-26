@@ -37,8 +37,8 @@ public class Tool {
 
     public static final String VideoStoragePath=Environment.getExternalStorageDirectory().getAbsolutePath()+"/NystagmusMovies";
 
-    public static int RecognitionGrayValue=45;
-    public static final int RecognitionGrayValueDefault=45;
+    public static int RecognitionGrayValue=35;
+    public static final int RecognitionGrayValueDefault=35;
 
     public static final int VideoTransmitTestCode=6;
 
@@ -87,6 +87,12 @@ public class Tool {
 
         //return Environment.getExternalStorageDirectory().getAbsolutePath()+"/NystagmusMovies/"+timeNow+".mp4";
         return VideoStoragePath+"/"+timeNow+".mp4";
+    }
+
+    public static double distance(Box x,Box y)
+    {
+        //求两点之间的绝对距离
+        return Math.sqrt(Math.pow(x.getX()-y.getX(),2)+Math.pow(x.getY()-y.getY(),2));
     }
 
 }

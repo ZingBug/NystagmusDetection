@@ -49,6 +49,7 @@ import java.util.Vector;
 import static android.R.id.edit;
 import static android.media.MediaMetadataRetriever.METADATA_KEY_DATE;
 import static android.media.MediaMetadataRetriever.METADATA_KEY_DURATION;
+import static org.bytedeco.javacpp.opencv_ml.SVM.P;
 
 public class VideoActivity extends AppCompatActivity {
 
@@ -120,7 +121,20 @@ public class VideoActivity extends AppCompatActivity {
                 //文本变化后
             }
         });
-
+        File file=new File(Tool.VideoStoragePath);
+        if(file.exists())
+        {
+            if(!file.isDirectory())
+            {
+                deleteFile(Tool.VideoStoragePath);
+                file.delete();
+                file.mkdir();
+            }
+        }
+        else
+        {
+            file.mkdir();
+        }
     }
     @Override
     public boolean onOptionsItemSelected(MenuItem item)

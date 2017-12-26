@@ -27,6 +27,7 @@ import com.example.lzh.nystagmus.Utils.Box;
 import com.example.lzh.nystagmus.Utils.Calculate;
 import com.example.lzh.nystagmus.Utils.GetPath;
 import com.example.lzh.nystagmus.Utils.L;
+import com.example.lzh.nystagmus.Utils.PointFilter;
 import com.example.lzh.nystagmus.Utils.T;
 import com.example.lzh.nystagmus.Utils.ImgProcess;
 import com.example.lzh.nystagmus.Utils.Tool;
@@ -112,7 +113,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private SharedPreferences pref;//调用存储文件
 
-    private Calculate calculate;
+    private Calculate calculate;//瞳孔数据计算器
     private int calNum;//计算时间间隔
     private int secondTime;//视频测试时间
 
@@ -141,10 +142,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private CoordinatorLayout MainContainer;
 
     /*旋转曲线*/
-    private double LeyePreX;
-    private double LeyePreY;
-    private double ReyePreX;
-    private double ReyePreY;
+
+    /*滤波*/
+    private PointFilter filterL;//左眼滤波器
+    private PointFilter filterR;//右眼滤波器
+
+    /*与上一帧做比较*/
+    private Box preLeyeBox;
+    private Box preReyeBox;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -175,6 +180,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         DiagnosticResult.setText(R.string.defalut);
         LeyeDirectionResult.setText(R.string.defalut);
         ReyeDirectionResult.setText(R.string.defalut);
+
 
         df= new DecimalFormat("##.#");//数据格式,float转string保留1位小数
 
@@ -404,7 +410,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         timer=new Timer();
 
-        calculate=new Calculate();
+        calculate=new Calculate();//瞳孔数据计算器
+
+        filterL=new PointFilter();//左眼瞳孔坐标滤波器
+        filterR=new PointFilter();//右眼瞳孔坐标滤波器
+
         calNum=0;//1s计算一次
         secondTime=0;//0s
         message=new Message();
@@ -774,7 +784,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     timer=new Timer();
 
                     L.d("视频开始播放");
-                    calculate=new Calculate();
+                    calculate=new Calculate();//瞳孔数据计算器
+
+                    filterL=new PointFilter();//左眼瞳孔坐标滤波器
+                    filterR=new PointFilter();//右眼瞳孔坐标滤波器
+
                     calNum=0;//1s计算一次
                     secondTime=0;//0s
                     message=new Message();
@@ -1077,8 +1091,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if(IsTest)
             {
                 //开始测试后进行波形分析
-                for(Box box:pro.Lcircles)
+                for(Box box:pro.Lcircles())
                 {
+                    //先滤波处理
+                    filterL.add(box);
+                    box=filterL.get();
+
+                    //圆心坐标更新
+                    if(preLeyeBox==null)
+                    {
+                        preLeyeBox=box;
+                        break;
+                    }
+
+                    //与上一帧做对比
+                    if(Tool.distance(box,preLeyeBox)>(box.getR()+preLeyeBox.getR()/1.5)&&(Math.abs(box.getR()-preLeyeBox.getR())>box.getR()/2.0))
+                    {
+                        return;
+                    }
+
                     //左眼坐标
                     if(!IsLeyeCenter)
                     {
@@ -1086,13 +1117,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         IsLeyeCenter=true;
                         LeyeCenter.setX(box.getX());
                         LeyeCenter.setY(box.getY());
-                        LeyePreX= box.getX();
-                        LeyePreY= box.getY();
                     }
                     else
                     {
                         //后续相对地址是基于第一帧位置的
-                        double tempL=Math.atan((box.getY()-LeyePreY)/(box.getX()-LeyePreX));
+                        double tempL=Math.atan((box.getY()-preLeyeBox.getY())/(box.getX()-preLeyeBox.getX()));
                         if(Double.isNaN(tempL))
                         {
                             tempL=0;
@@ -1102,12 +1131,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         addEntey(chart_y,FrameNum/(float)30,(float) (box.getY()-LeyeCenter.getY()),0);
                         calculate.addLeyeX((float) (box.getX()-LeyeCenter.getX()));
                         calculate.addLeyeY((float) (box.getY()-LeyeCenter.getY()));
-                        LeyePreX= box.getX();
-                        LeyePreY= box.getY();
                     }
+                    preLeyeBox=box;
                 }
-                for(Box box:pro.Rcircles)
+                for(Box box:pro.Rcircles())
                 {
+                    //先滤波处理
+                    filterR.add(box);
+                    box=filterR.get();
+
+                    //圆心坐标更新
+                    if(preReyeBox==null)
+                    {
+                        preReyeBox=box;
+                        break;
+                    }
+
+                    //与上一帧做对比
+                    if(Tool.distance(box,preReyeBox)>(box.getR()+preReyeBox.getR()/1.5)&&(Math.abs(box.getR()-preReyeBox.getR())>box.getR()/2.0))
+                    {
+                        return;
+                    }
+
                     //右眼坐标
                     if(!IsReyeCenter)
                     {
@@ -1115,13 +1160,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         IsReyeCenter=true;
                         ReyeCenter.setX(box.getX());
                         ReyeCenter.setY(box.getY());
-                        ReyePreX= box.getX();
-                        ReyePreY= box.getY();
                     }
                     else
                     {
                         //后续相对地址是基于第一帧位置的
-                        double tempR=Math.atan((box.getY()-ReyePreY)/(box.getX()-ReyePreX));
+                        double tempR=Math.atan((box.getY()-preReyeBox.getY())/(box.getX()-preReyeBox.getX()));
                         if(Double.isNaN(tempR))
                         {
                             tempR=0;
@@ -1131,9 +1174,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         addEntey(chart_y,FrameNum/(float)30,(float)(box.getY()-ReyeCenter.getY()),1);
                         calculate.addReyeX((float) (box.getX()-ReyeCenter.getX()));
                         calculate.addReyeY((float) (box.getY()-ReyeCenter.getY()));
-                        ReyePreX= box.getX();
-                        ReyePreY= box.getY();
                     }
+                    preReyeBox=box;
                 }
             }
             try
