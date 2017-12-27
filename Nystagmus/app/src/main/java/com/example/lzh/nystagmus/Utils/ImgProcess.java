@@ -400,7 +400,6 @@ public class ImgProcess {
         box.setR(sqrt(a*a + b*b - 4 * c) / 2);
         return box;
     }
-
     /**
      * 霍夫检测圆，测试用，目前有bug
      * @param img 输入图像
@@ -410,6 +409,7 @@ public class ImgProcess {
      */
     private Point hough(org.bytedeco.javacpp.helper.opencv_core.CvArr img, double minradius, double maxradius)
     {
+        //这段程序有待商榷，不一定对。等用到时再改吧。
         Point point=new Point();
         opencv_imgproc.cvHoughCircles(img,point,HOUGH_GRADIENT,minradius,maxradius);
         return point;
@@ -436,8 +436,8 @@ public class ImgProcess {
         {
             CvPoint center=new CvPoint((int)Math.round(circles.get(i).getX()),(int)Math.round(circles.get(i).getY()));
             int radius=(int)circles.get(i).getR();
-            opencv_imgproc.cvCircle(midImage,center,1,cvblue,-1,8,0);//画圆心
-            opencv_imgproc.cvCircle(midImage,center,radius,cvred,1,8,0);//画圆轮廓
+            //opencv_imgproc.cvCircle(midImage,center,1,cvblue,-1,8,0);//画圆心
+            //opencv_imgproc.cvCircle(midImage,center,radius,cvred,1,8,0);//画圆轮廓
             drawCross(midImage,center,cvwhite,1);//绘制十字光标
         }
     }

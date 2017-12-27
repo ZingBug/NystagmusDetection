@@ -124,7 +124,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView ReyeYRealtimeAndMaxSPV;
     private TextView LeyeHighperiod;
     private TextView ReyeHighperiod;
-    private DecimalFormat df;//数据格式,float转string保留两位小数
+    private DecimalFormat df;//数据格式,double转string保留两位小数
 
     /*诊断相关*/
     private TextView DiagnosticResult;
@@ -139,9 +139,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     /*视频保存名称*/
     private String VideoStorgeName;
-    private CoordinatorLayout MainContainer;
-
-    /*旋转曲线*/
+    //private CoordinatorLayout MainContainer;
 
     /*滤波*/
     private PointFilter filterL;//左眼滤波器
@@ -168,7 +166,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         DiagnosticResult=(TextView) findViewById(R.id.diagnosticResult);
         LeyeDirectionResult=(TextView) findViewById(R.id.leyeDirection);
         ReyeDirectionResult=(TextView) findViewById(R.id.reyeDirection);
-        MainContainer=(CoordinatorLayout) findViewById(R.id.main_container);
+        //MainContainer=(CoordinatorLayout) findViewById(R.id.main_container);
 
         /*初始化设置为0*/
         LeyeXRealtimeAndMaxSPV.setText("0/0");
@@ -181,13 +179,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         LeyeDirectionResult.setText(R.string.defalut);
         ReyeDirectionResult.setText(R.string.defalut);
 
-
         df= new DecimalFormat("##.#");//数据格式,float转string保留1位小数
 
         NavigationView navView=(NavigationView)findViewById(R.id.nav_view);
         Toolbar toolbar=(Toolbar)findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-
 
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(this, mDrawerLayout, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
         mDrawerLayout.setDrawerListener(toggle);
@@ -467,7 +463,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
         recorder.setVideoCodec(avcodec.AV_CODEC_ID_MPEG4);
         recorder.setFormat("mp4");
-        timer.schedule(new readFarme(),50,5);
+        timer.schedule(new readFrame(),50,5);
         L.d("视频开始播放");
     }
     private void openVideo()
@@ -808,7 +804,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     DiagnosticResult.setTextColor(MainActivity.this.getResources().getColor(R.color.black));
 
                     IsTest=true;
-                    timer.schedule(new readFarme(),50,10);
+                    timer.schedule(new readFrame(),50,10);
                 }
                 break;
             }
@@ -820,7 +816,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
         }
     }
-    class readFarme extends TimerTask{
+    class readFrame extends TimerTask{
         @Override
         public void run()
         {
@@ -907,7 +903,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 //如果存在双眼视频
                 if(EyeNum==Tool.ALL_EYE&&IsTest)
                 {
-                    Mat mergeMat=new Mat();
+                    Mat mergeMat;
                     mergeMat=Tool.MergeMat(LeftFrameMat,RightFrameMat);
                     Frame mergeFrame=matConverter.convert(mergeMat);
                     try
@@ -951,10 +947,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     calculate.processLeyeX(secondTime);
                     calculate.processLeyeY(secondTime);
 
-                    final float leyeXRealtime=calculate.getRealTimeSPVX(secondTime,true);
-                    final float leyeXMax=calculate.getMaxSPVX(true);
-                    final float leyeYRealtime=calculate.getRealTimeSPVY(secondTime,true);
-                    final float leyeYMax=calculate.getMaxSPVY(true);
+                    final double leyeXRealtime=calculate.getRealTimeSPVX(secondTime,true);
+                    final double leyeXMax=calculate.getMaxSPVX(true);
+                    final double leyeYRealtime=calculate.getRealTimeSPVY(secondTime,true);
+                    final double leyeYMax=calculate.getMaxSPVY(true);
                     final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
                     final String period_L=getPeriod(maxSecond_L);
                     //强制在UI线程下更新
@@ -1001,14 +997,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     calculate.processReyeX(secondTime);
                     calculate.processLeyeY(secondTime);
                     calculate.processReyeY(secondTime);
-                    final float leyeXRealtime=calculate.getRealTimeSPVX(secondTime,true);
-                    final float reyeXRealtime=calculate.getRealTimeSPVX(secondTime,false);
-                    final float leyeXMax=calculate.getMaxSPVX(true);
-                    final float reyeXMax=calculate.getMaxSPVX(false);
-                    final float leyeYRealtime=calculate.getRealTimeSPVY(secondTime,true);
-                    final float reyeYRealtime=calculate.getRealTimeSPVY(secondTime,false);
-                    final float leyeYMax=calculate.getMaxSPVY(true);
-                    final float reyeYMax=calculate.getMaxSPVY(false);
+                    final double leyeXRealtime=calculate.getRealTimeSPVX(secondTime,true);
+                    final double reyeXRealtime=calculate.getRealTimeSPVX(secondTime,false);
+                    final double leyeXMax=calculate.getMaxSPVX(true);
+                    final double reyeXMax=calculate.getMaxSPVX(false);
+                    final double leyeYRealtime=calculate.getRealTimeSPVY(secondTime,true);
+                    final double reyeYRealtime=calculate.getRealTimeSPVY(secondTime,false);
+                    final double leyeYMax=calculate.getMaxSPVY(true);
+                    final double reyeYMax=calculate.getMaxSPVY(false);
                     final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
                     final int maxSecond_R=calculate.getHighTidePeriod(false);//右眼
                     final String period_L=getPeriod(maxSecond_L);
@@ -1039,10 +1035,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         //左眼
                         calculate.processLeyeX(secondTime);
                         calculate.processLeyeY(secondTime);
-                        final float leyeXRealtime=calculate.getRealTimeSPVX(secondTime,true);
-                        final float leyeXMax=calculate.getMaxSPVX(true);
-                        final float leyeYRealtime=calculate.getRealTimeSPVY(secondTime,true);
-                        final float leyeYMax=calculate.getMaxSPVY(true);
+                        final double leyeXRealtime=calculate.getRealTimeSPVX(secondTime,true);
+                        final double leyeXMax=calculate.getMaxSPVX(true);
+                        final double leyeYRealtime=calculate.getRealTimeSPVY(secondTime,true);
+                        final double leyeYMax=calculate.getMaxSPVY(true);
                         final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
                         final String period_L=getPeriod(maxSecond_L);
                         //强制在UI线程下更新
@@ -1060,10 +1056,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         //右眼
                         calculate.processReyeX(secondTime);
                         calculate.processReyeY(secondTime);
-                        final float reyeXRealtime=calculate.getRealTimeSPVX(secondTime,false);
-                        final float reyeXMax=calculate.getMaxSPVX(false);
-                        final float reyeYRealtime=calculate.getRealTimeSPVY(secondTime,false);
-                        final float reyeYMax=calculate.getMaxSPVY(false);
+                        final double reyeXRealtime=calculate.getRealTimeSPVX(secondTime,false);
+                        final double reyeXMax=calculate.getMaxSPVX(false);
+                        final double reyeYRealtime=calculate.getRealTimeSPVY(secondTime,false);
+                        final double reyeYMax=calculate.getMaxSPVY(false);
                         final int maxSecond_R=calculate.getHighTidePeriod(false);//右眼
                         final String period_R=getPeriod(maxSecond_R);
                         //强制在UI线程下更新
@@ -1129,8 +1125,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         addEntey(chart_rotation,FrameNum/(float)30,(float) tempL,0);
                         addEntey(chart_x,FrameNum/(float)30,(float) (box.getX()-LeyeCenter.getX()),0);
                         addEntey(chart_y,FrameNum/(float)30,(float) (box.getY()-LeyeCenter.getY()),0);
-                        calculate.addLeyeX((float) (box.getX()-LeyeCenter.getX()));
-                        calculate.addLeyeY((float) (box.getY()-LeyeCenter.getY()));
+                        calculate.addLeyeX(box.getX()-LeyeCenter.getX());
+                        calculate.addLeyeY(box.getY()-LeyeCenter.getY());
                     }
                     preLeyeBox=box;
                 }
@@ -1172,8 +1168,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         addEntey(chart_rotation,FrameNum/(float)30,(float) tempR,1);
                         addEntey(chart_x,FrameNum/(float)30,(float)(box.getX()-ReyeCenter.getX()),1);
                         addEntey(chart_y,FrameNum/(float)30,(float)(box.getY()-ReyeCenter.getY()),1);
-                        calculate.addReyeX((float) (box.getX()-ReyeCenter.getX()));
-                        calculate.addReyeY((float) (box.getY()-ReyeCenter.getY()));
+                        calculate.addReyeX(box.getX()-ReyeCenter.getX());
+                        calculate.addReyeY(box.getY()-ReyeCenter.getY());
                     }
                     preReyeBox=box;
                 }
