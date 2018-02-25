@@ -3,6 +3,9 @@
 ### JavaCv 
 ### 眼球震动定位检测
 
+### 2018年2月25日
+- 更改部分项目配置，将项目移植到Android studio 3版本。
+- 更改UI更新时用到的Handle，解决之前android handler的警告Handler Class Should be Static or Leaks Occur。
 ### 2018年1月4日
 - 增加对全面屏手机（屏幕比例为18：9）的支持，比如三星note8、小米MIX2等。
 - 增加APP检验主界面屏幕常亮。

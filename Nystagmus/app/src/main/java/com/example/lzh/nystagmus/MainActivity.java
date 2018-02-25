@@ -1,5 +1,6 @@
 package com.example.lzh.nystagmus;
 
+import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -55,6 +56,7 @@ import org.bytedeco.javacpp.opencv_imgproc;
 import org.bytedeco.javacpp.opencv_core.Mat;
 import org.bytedeco.javacpp.opencv_core.Rect;
 
+import java.lang.ref.WeakReference;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Timer;
@@ -149,6 +151,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     /*与上一帧做比较*/
     private Box preLeyeBox;
     private Box preReyeBox;
+
+    /*handle,主要用于UI更新*/
+    private final MyViewHandle mViewHandle=new MyViewHandle(this);
+    private final MyToastHandle mToastHandle=new MyToastHandle(this);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -419,7 +425,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         secondTime=0;//0s
         message=new Message();
         message.obj="视频开始播放";
-        ToastHandle.sendMessage(message);
+        mToastHandle.sendMessage(message);
         IsTimerRun=true;
 
         LeyeXRealtimeAndMaxSPV.setText("0/0");
@@ -489,7 +495,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             message=new Message();
             message.obj="无视频源";
             L.d("无视频源");
-            ToastHandle.sendMessage(message);
+            mToastHandle.sendMessage(message);
             return;
         }
 
@@ -508,7 +514,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         secondTime=0;//0s
         message=new Message();
         message.obj="开始测试";
-        ToastHandle.sendMessage(message);
+        mToastHandle.sendMessage(message);
         IsTimerRun=true;
 
         //视频开始录制
@@ -575,7 +581,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             L.d("手动关闭视频播放，定时器关闭");
             message=new Message();
             message.obj="视频播放结束";
-            ToastHandle.sendMessage(message);
+            mToastHandle.sendMessage(message);
             if(EyeNum==Tool.VEDIO_EYE||EyeNum==Tool.VEDIO_ONLY_EYE)
             {
                 try {
@@ -617,7 +623,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             L.d("请先播放视频");
             message=new Message();
             message.obj="请先播放视频";
-            ToastHandle.sendMessage(message);
+            mToastHandle.sendMessage(message);
         }
     }
     private void initialChart(LineChart chart,String label)
@@ -694,8 +700,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         LineData data=new LineData(dataSets);
         chart.setData(data);
         chart.notifyDataSetChanged();
-        ChartMessage=new Message();
-        ChartHandle.sendMessage(ChartMessage);
     }
     @Override
     protected void onActivityResult(int requestCode,int resultCode,Intent data)
@@ -793,7 +797,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     secondTime=0;//0s
                     message=new Message();
                     message.obj="视频开始播放";
-                    ToastHandle.sendMessage(message);
+                    mToastHandle.sendMessage(message);
                     IsTimerRun=true;
 
                     LeyeXRealtimeAndMaxSPV.setText("0/0");
@@ -1190,7 +1194,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 L.e("格式转换发生异常："+e.toString());
             }
             message = new Message();
-            ViewHandle.sendMessage(message);
+            mViewHandle.sendMessage(message);
         }
     }
     //视频停止操作
@@ -1252,43 +1256,44 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
             message=new Message();
             message.obj="视频播放结束";//代表视频播放结束
-            ToastHandle.sendMessage(message);
+            mToastHandle.sendMessage(message);
         }
     }
-    Handler ViewHandle=new Handler()//用以实时刷新显示左右眼,异步消息处理
-    {
-        @Override
-        public void handleMessage(Message msg)
+
+    //双眼瞳孔图像刷新显示
+    private static class MyViewHandle extends Handler{
+        private final WeakReference<MainActivity> mActivity;
+        public MyViewHandle(MainActivity activity)
         {
-            imageView_leye.setImageBitmap(LeftView);
-            imageView_reye.setImageBitmap(RightView);
-            super.handleMessage(msg);
+            mActivity=new WeakReference<MainActivity>(activity);
         }
-    };
-    Handler ToastHandle=new Handler()//用于显示Toast消息
-    {
+
         @Override
-        public void handleMessage(Message msg)
-        {
-            T.showShort(MainActivity.this,msg.obj.toString());
-            super.handleMessage(msg);
-        }
-    };
-    Handler ChartHandle=new Handler()
-    {
-        @Override
-        public void handleMessage(Message msg)
-        {
-            try
+        public void handleMessage(Message msg) {
+            MainActivity activity=mActivity.get();
+            if(activity!=null)
             {
-                chart_x.invalidate();
-                chart_y.invalidate();
+                activity.imageView_leye.setImageBitmap(activity.LeftView);
+                activity.imageView_reye.setImageBitmap(activity.RightView);
             }
-            catch (ArrayIndexOutOfBoundsException e)
-            {
-                L.d(e.toString());
-            }
-            super.handleMessage(msg);
         }
-    };
+    }
+
+    //Toast提示
+    private static class MyToastHandle extends Handler{
+        private final WeakReference<MainActivity> mActivity;
+        public MyToastHandle(MainActivity activity)
+        {
+            mActivity=new WeakReference<MainActivity>(activity);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            MainActivity activity=mActivity.get();
+            if(activity!=null)
+            {
+                T.showShort(activity,msg.obj.toString());
+            }
+        }
+    }
 }
