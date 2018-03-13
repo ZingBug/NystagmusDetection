@@ -42,6 +42,8 @@ public class Tool {
 
     public static final int VideoTransmitTestCode=6;
 
+    public static final int QueueSize=100;//阻塞队列容量
+
     public static opencv_core.Mat MergeMat(opencv_core.Mat leftMat, opencv_core.Mat rightMat)
     {
         opencv_core.Size size=new opencv_core.Size(leftMat.cols()+rightMat.cols(),Max(leftMat.rows(),rightMat.rows()));

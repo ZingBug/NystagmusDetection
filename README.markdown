@@ -3,6 +3,10 @@
 ### JavaCv 
 ### 眼球震动定位检测
 
+###2018年3月13日
+- 将之前通过定时器来进行图像读取处理的方式，更改为，将图像读取和处理分别各用一个线程来实现。
+- 但这次也有一个未来可以改进的点，每次启动视频时都要新建线程，之后可以更改为额外线程一直保持，当有视频启动时则唤醒线程，没有视频时则休眠线程的方式。
+- 线程休眠唤醒可以通过object.wait()/object.notifyAll()来配合实现。
 ### 2018年2月25日
 - 更改部分项目配置，将项目移植到Android studio 3版本。
 - 更改UI更新时用到的Handle，解决之前android handler的警告Handler Class Should be Static or Leaks Occur。
