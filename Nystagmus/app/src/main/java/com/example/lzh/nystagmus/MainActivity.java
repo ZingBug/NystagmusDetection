@@ -102,7 +102,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Mat AllEyeMat;
     private Message message;
     private Message ChartMessage;
-    private boolean IsTimerRun=false;
     private Mat blankMat;
 
     private int EyeNum=Tool.NOT_ALLEYE;//眼睛数目
@@ -450,7 +449,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         message=new Message();
         message.obj="视频开始播放";
         mToastHandle.sendMessage(message);
-        IsTimerRun=true;
 
         LeyeXRealtimeAndMaxSPV.setText("0/0");
         ReyeXRealtimeAndMaxSPV.setText("0/0");
@@ -466,7 +464,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         //线程初始化
         readThread=new ReadImageThread();
         processThread=new ProcessImageThread();
-
+        frameWebRightQueue.clear();//清空链表
+        frameWebLeftQueue.clear();//清空链表
 
         /*视频录制初始化*/
         switch (EyeNum){
@@ -517,12 +516,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if((readThread!=null)&&readThread.isRunning()&&readThread.isAlive())
         {
             //如果正在读取视频，则立即停止当前读取
-            readThread.setStop(false);
+            readThread.setStop(true);
+            processThread.setStop(true);
         }
         if((processThread!=null)&&processThread.isRunning()&&processThread.isAlive())
         {
             //如果正在处理图像，则立即停止当前处理
-            processThread.setStop(false);
+            processThread.setStop(true);
         }
         Intent intent=new Intent("android.intent.action.GET_CONTENT");
         intent.setType("video/*");
@@ -552,7 +552,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         message=new Message();
         message.obj="开始测试";
         mToastHandle.sendMessage(message);
-        IsTimerRun=true;
 
         //视频开始录制
         try
@@ -568,9 +567,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
     private void stopPlay()
     {
-        if(IsTimerRun)
+        if((readThread!=null)&&readThread.isRunning()&&readThread.isAlive()||(processThread!=null)&&processThread.isRunning()&&processThread.isAlive())
         {
-            IsTimerRun=false;
             if(IsTest&&(EyeNum==Tool.ALL_EYE||EyeNum==Tool.NOT_LEYE||EyeNum==Tool.NOT_REYE))
             {
                 try
@@ -588,6 +586,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             //停止线程
             readThread.setStop(true);
             processThread.setStop(true);
+
+            frameLocalQueue.clear();
+            frameWebLeftQueue.clear();
+            frameWebRightQueue.clear();
 
             /*诊断结果*/
             final boolean diagnosticResult=calculate.judgeDiagnosis();//诊断结果
@@ -802,14 +804,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     ReyeCenter=new Box();
 
                     L.d("视频开始播放");
-                    calculate=new Calculate();//瞳孔数据计算器
 
                     filterL=new PointFilter();//左眼瞳孔坐标滤波器
                     filterR=new PointFilter();//右眼瞳孔坐标滤波器
 
+                    frameLocalQueue.clear();
                     readThread=new ReadImageThread();
                     processThread=new ProcessImageThread();
 
+                    calculate=new Calculate();//瞳孔数据计算器
 
                     readThread.setLeftGrabber(capture);
                     processThread.setRate(readThread.getRate());
@@ -817,7 +820,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     message=new Message();
                     message.obj="视频开始播放";
                     mToastHandle.sendMessage(message);
-                    IsTimerRun=true;
 
                     LeyeXRealtimeAndMaxSPV.setText("0/0");
                     ReyeXRealtimeAndMaxSPV.setText("0/0");
