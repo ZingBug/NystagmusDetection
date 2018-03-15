@@ -268,6 +268,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         //打开视频列表界面
                         Intent intent=new Intent(MainActivity.this,VideoActivity.class);
                         startActivityForResult(intent,Tool.VideoTransmitTestCode);
+                        if((readThread!=null)&&readThread.isRunning()&&readThread.isAlive())
+                        {
+                            //如果正在读取视频，则立即停止当前读取
+                            readThread.setStop(true);
+                        }
+                        if((processThread!=null)&&processThread.isRunning()&&processThread.isAlive())
+                        {
+                            //如果正在处理图像，则立即停止当前处理
+                            processThread.setStop(true);
+                        }
                         break;
                     }
                     default:
@@ -517,7 +527,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         {
             //如果正在读取视频，则立即停止当前读取
             readThread.setStop(true);
-            processThread.setStop(true);
         }
         if((processThread!=null)&&processThread.isRunning()&&processThread.isAlive())
         {
@@ -686,6 +695,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void addEntey(final LineChart add_chart, final float add_x,final float add_y,final int add_flag)
     {
         //flag:0 左眼; flag:1 右眼
+
         MainActivity.this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -696,6 +706,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 add_chart.invalidate();
             }
         });
+
     }
     private void clearEntey(LineChart chart)
     {
@@ -727,6 +738,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         boolean isTransmit=false;
         switch (requestCode)
         {
+
             case Tool.VideoTransmitTestCode:
             {
                 if(resultCode==RESULT_OK)
@@ -735,6 +747,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     VideoPath=bundle.getString("VideoPath");
                     isTransmit=true;
                     mDrawerLayout.closeDrawers();//关闭侧滑栏
+
                 }
             }
             case OPEN_VIDEO:
@@ -795,6 +808,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     }
 
                     /*下面是参数初始化*/
+
                     clearEntey(chart_x);
                     clearEntey(chart_y);
                     clearEntey(chart_rotation);
@@ -837,10 +851,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     readThread.start();
                     processThread.start();
                 }
-                break;
-            }
-            case OPEN_CAMERA:
-            {
                 break;
             }
             default:
@@ -1174,6 +1184,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         AllEyeMat=matConverter.convertToMat(AllFrame);
                         //图像切割
                         //借助于Rect的ROI分割
+                        if(AllEyeMat==null)
+                        {
+                            continue;
+                        }
                         Rect reye_box=new Rect(0,1,AllEyeMat.cols()/2,AllEyeMat.rows()-1);
                         Rect leye_box=new Rect(AllEyeMat.cols()/2,1,AllEyeMat.cols()/2-1,AllEyeMat.rows()-1);
                         LeftFrameMat=new Mat(AllEyeMat,reye_box);
@@ -1309,9 +1323,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                 {
                                     tempL=0;
                                 }
-                                addEntey(chart_rotation,frameNum/(float)rate,(float) tempL,0);
-                                addEntey(chart_x,frameNum/(float)rate,(float) (box.getX()-LeyeCenter.getX()),0);
-                                addEntey(chart_y,frameNum/(float)rate,(float) (box.getY()-LeyeCenter.getY()),0);
+                                if(true)
+                                {
+                                    addEntey(chart_rotation,frameNum/(float)rate,(float) tempL,0);
+                                    addEntey(chart_x,frameNum/(float)rate,(float) (box.getX()-LeyeCenter.getX()),0);
+                                    addEntey(chart_y,frameNum/(float)rate,(float) (box.getY()-LeyeCenter.getY()),0);
+                                }
+
                                 calculate.addLeyeX(box.getX()-LeyeCenter.getX());
                                 calculate.addLeyeY(box.getY()-LeyeCenter.getY());
                             }
@@ -1352,9 +1370,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                 {
                                     tempR=0;
                                 }
-                                addEntey(chart_rotation,frameNum/(float)rate,(float) tempR,1);
-                                addEntey(chart_x,frameNum/(float)rate,(float)(box.getX()-ReyeCenter.getX()),1);
-                                addEntey(chart_y,frameNum/(float)rate,(float)(box.getY()-ReyeCenter.getY()),1);
+                                if(true)
+                                {
+                                    addEntey(chart_rotation,frameNum/(float)rate,(float) tempR,1);
+                                    addEntey(chart_x,frameNum/(float)rate,(float)(box.getX()-ReyeCenter.getX()),1);
+                                    addEntey(chart_y,frameNum/(float)rate,(float)(box.getY()-ReyeCenter.getY()),1);
+                                }
+
                                 calculate.addReyeX(box.getX()-ReyeCenter.getX());
                                 calculate.addReyeY(box.getY()-ReyeCenter.getY());
                             }
@@ -1374,18 +1396,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 catch (InterruptedException e)
                 {
                     T.showShort(MainActivity.this,"视频处理出现问题");
-                    L.e("视频处理出现问题 "+e.getMessage());
+                    L.e("视频处理出现问题: "+e.getMessage());
                     this.stop=true;
                     videoStop();
                     break;
                 }
                 catch (FFmpegFrameRecorder.Exception e)
                 {
-                    L.e("视频记录出错 "+e.getMessage());
+                    L.e("视频记录出错: "+e.getMessage());
                 }
                 catch (Exception e)
                 {
-                    L.e("图像格式转换出错 "+e.getMessage());
+                    L.e("其他错误：  "+e.getMessage());
                 }
             }
         }
