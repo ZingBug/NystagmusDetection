@@ -265,6 +265,7 @@ public class VideoActivity extends AppCompatActivity {
         for(String name:vecName)
         {
             String absolutePath=Tool.VideoStoragePath+"/"+name;
+
             MediaMetadataRetriever retriever=new MediaMetadataRetriever();
             retriever.setDataSource(absolutePath);
             String periodTime=getVideoDuration(retriever.extractMetadata(METADATA_KEY_DURATION));
@@ -290,6 +291,12 @@ public class VideoActivity extends AppCompatActivity {
                 if(filename.trim().toLowerCase().endsWith(".mp4"))
                 {
                     //是MP4文件
+                    //则判断大小，小于100KB的文件则忽略
+                    int size=(int)(subFile[iFileLength].length()/1024)+1;
+                    if(size<100)
+                    {
+                        continue;
+                    }
                     vector.add(filename);
                 }
             }

@@ -13,7 +13,6 @@ public class VideoInfo implements Cloneable {
     private String date;
     private String periodTime;
     private String absolutePath;
-
     public VideoInfo(String name,String date,String periodTime,String absolutePath)
     {
         this.name=name;
@@ -73,5 +72,4 @@ public class VideoInfo implements Cloneable {
                 &&this.periodTime.equals(other.periodTime)
                 &&this.absolutePath.equals(other.absolutePath);
     }
-
 }

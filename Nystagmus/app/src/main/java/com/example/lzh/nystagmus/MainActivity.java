@@ -80,7 +80,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private FFmpegFrameGrabber vacpLeft;//打开左眼网络视频
     private FFmpegFrameGrabber vacpRight;//打开右眼网络视频
     private static final int Storage_RequestCode=1;//存储权限申请码
-    private FFmpegFrameRecorder recorder;
+    private FFmpegFrameRecorder recorder;//定义录制变量
 
     private Frame LeftFrame;
     private Frame AllFrame;
@@ -378,6 +378,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
     private void openCamera()
     {
+        if((readThread!=null)&&readThread.isRunning()&&readThread.isAlive())
+        {
+            //如果正在读取视频，则立即停止当前读取
+            readThread.setStop(true);
+        }
+        if((processThread!=null)&&processThread.isRunning()&&processThread.isAlive())
+        {
+            //如果正在处理图像，则立即停止当前处理
+            processThread.setStop(true);
+        }
+
         EyeNum=Tool.ALL_EYE;
         vacpLeft=new FFmpegFrameGrabber(Tool.AddressLeftEye);
         vacpRight=new FFmpegFrameGrabber(Tool.AddressRightEye);
@@ -411,17 +422,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 L.d("双眼全部连接失败");
                 return;
             }
-        }
-
-        if((readThread!=null)&&readThread.isRunning()&&readThread.isAlive())
-        {
-            //如果正在读取视频，则立即停止当前读取
-            readThread.setStop(true);
-        }
-        if(processThread.isRunning()&&processThread.isAlive())
-        {
-            //如果正在处理图像，则立即停止当前处理
-            processThread.setStop(true);
         }
 
         IsTest=false;//还没有开始测试
@@ -471,11 +471,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         ReyeDirectionResult.setText(R.string.defalut);
         DiagnosticResult.setTextColor(MainActivity.this.getResources().getColor(R.color.black));
 
+        //图像队列清空
+        frameWebRightQueue.clear();//清空链表
+        frameWebLeftQueue.clear();//清空链表
+
         //线程初始化
         readThread=new ReadImageThread();
         processThread=new ProcessImageThread();
-        frameWebRightQueue.clear();//清空链表
-        frameWebLeftQueue.clear();//清空链表
 
         /*视频录制初始化*/
         switch (EyeNum){
@@ -483,8 +485,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             {
                 //只有右眼
                 VideoStorgeName=Tool.GetVideoStoragePath();
-                recorder=new FFmpegFrameRecorder(VideoStorgeName,vacpRight.getImageWidth(),vacpRight.getImageHeight(),vacpRight.getAudioChannels());
-                recorder.setFrameNumber(vacpRight.getFrameNumber());
+                recorder=new FFmpegFrameRecorder(VideoStorgeName,vacpRight.getImageWidth(),vacpRight.getImageHeight(),vacpRight.getAudioChannels());//初始化录制视频图像的高、宽等参数
+                recorder.setFrameNumber(vacpRight.getFrameNumber());//设置录制帧率
                 readThread.setRightGrabber(vacpRight);//设置右眼读取视频
                 break;
             }
@@ -512,10 +514,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 return;
             }
         }
-        recorder.setVideoCodec(avcodec.AV_CODEC_ID_MPEG4);
-        recorder.setFormat("mp4");
-        //开始工作
+        recorder.setVideoCodec(avcodec.AV_CODEC_ID_MPEG4);//设置视频录制编码格式
+        recorder.setFormat("mp4");//设置录制视频保存类型
 
+        //开始工作
         processThread.setRate(readThread.getRate());
         readThread.start();
         processThread.start();
@@ -593,8 +595,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             IsTest=false;
 
             //停止线程
-            readThread.setStop(true);
-            processThread.setStop(true);
+            if(readThread!=null)
+            {
+                readThread.setStop(true);
+            }
+            if(processThread!=null)
+            {
+                processThread.setStop(true);
+            }
 
             frameLocalQueue.clear();
             frameWebLeftQueue.clear();
@@ -981,6 +989,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                 STOP=true;
                                 break;
                             }
+                            frameWebLeftQueue.put(frame1);
+                            frameWebRightQueue.put(frame2);
                         }
                         default:break;
                     }
@@ -989,7 +999,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
                 catch (FrameGrabber.Exception e)
                 {
-                    //T.showShort(MainActivity.this,"播放失败");
+                    T.showShort(MainActivity.this,"播放失败"+e.toString());
                     L.e("读取失败 "+e.getMessage());
                     this.stop=true;
                     STOP=true;
@@ -997,7 +1007,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
                 catch (InterruptedException e)
                 {
-                    //T.showShort(MainActivity.this,"播放失败");
+                    T.showShort(MainActivity.this,"播放失败"+e.toString());
                     L.e("读取失败 "+e.getMessage());
                     this.stop=true;
                     STOP=true;
@@ -1323,12 +1333,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                 {
                                     tempL=0;
                                 }
-                                if(true)
-                                {
-                                    addEntey(chart_rotation,frameNum/(float)rate,(float) tempL,0);
-                                    addEntey(chart_x,frameNum/(float)rate,(float) (box.getX()-LeyeCenter.getX()),0);
-                                    addEntey(chart_y,frameNum/(float)rate,(float) (box.getY()-LeyeCenter.getY()),0);
-                                }
+                                addEntey(chart_rotation,frameNum/(float)rate,(float) tempL,0);
+                                addEntey(chart_x,frameNum/(float)rate,(float) (box.getX()-LeyeCenter.getX()),0);
+                                addEntey(chart_y,frameNum/(float)rate,(float) (box.getY()-LeyeCenter.getY()),0);
 
                                 calculate.addLeyeX(box.getX()-LeyeCenter.getX());
                                 calculate.addLeyeY(box.getY()-LeyeCenter.getY());
@@ -1370,12 +1377,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                 {
                                     tempR=0;
                                 }
-                                if(true)
-                                {
-                                    addEntey(chart_rotation,frameNum/(float)rate,(float) tempR,1);
-                                    addEntey(chart_x,frameNum/(float)rate,(float)(box.getX()-ReyeCenter.getX()),1);
-                                    addEntey(chart_y,frameNum/(float)rate,(float)(box.getY()-ReyeCenter.getY()),1);
-                                }
+                                addEntey(chart_rotation,frameNum/(float)rate,(float) tempR,1);
+                                addEntey(chart_x,frameNum/(float)rate,(float)(box.getX()-ReyeCenter.getX()),1);
+                                addEntey(chart_y,frameNum/(float)rate,(float)(box.getY()-ReyeCenter.getY()),1);
 
                                 calculate.addReyeX(box.getX()-ReyeCenter.getX());
                                 calculate.addReyeY(box.getY()-ReyeCenter.getY());
