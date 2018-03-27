@@ -392,8 +392,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         EyeNum=Tool.ALL_EYE;
         vacpLeft=new FFmpegFrameGrabber(Tool.AddressLeftEye);
         vacpRight=new FFmpegFrameGrabber(Tool.AddressRightEye);
-        //vacpLeft=new FFmpegFrameGrabber("http://192.168.155.2:8080/video");
-        //vacpRight=new FFmpegFrameGrabber("http://192.168.155.3:8080/video");
         try {
             vacpLeft.start();
         }
@@ -559,39 +557,29 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         LeyeCenter=new Box();
         ReyeCenter=new Box();
 
+        IsTest=true;//开始测试
+
         L.d("开始测试");
         message=new Message();
         message.obj="开始测试";
         mToastHandle.sendMessage(message);
 
         //视频开始录制
-        try
+        //try
         {
-            recorder.start();
+            //recorder.start();
         }
-        catch (FrameRecorder.Exception e)
+        //catch (FrameRecorder.Exception e)
         {
-            L.d("视频开启录制失败");
+            //L.d("视频开启录制失败");
         }
 
-        IsTest=true;//开始测试
+
     }
     private void stopPlay()
     {
         if((readThread!=null)&&readThread.isRunning()&&readThread.isAlive()||(processThread!=null)&&processThread.isRunning()&&processThread.isAlive())
         {
-            if(IsTest&&(EyeNum==Tool.ALL_EYE||EyeNum==Tool.NOT_LEYE||EyeNum==Tool.NOT_REYE))
-            {
-                try
-                {
-                    recorder.stop();
-                    recorder.release();
-                }
-                catch (FFmpegFrameRecorder.Exception e)
-                {
-                    L.d("视频保存出错");
-                }
-            }
             IsTest=false;
 
             //停止线程
@@ -947,6 +935,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             {
                 try
                 {
+                    this.frameNum++;
                     Frame frame1=grabber1.grabFrame();
                     if(frame1==null)
                     {
@@ -994,7 +983,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         }
                         default:break;
                     }
-                    this.frameNum++;
+
                     Thread.sleep(delay);
                 }
                 catch (FrameGrabber.Exception e)
@@ -1081,17 +1070,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         {
                             continue;
                         }
-                        /*图像旋转180度*/
+                        RightFrameMat=matConverter_R.convertToMat(RightFrame);
+                        /*
+                        //图像旋转180度
                         RightFrameMat=new Mat();
                         Mat RightFrameSrcMat=matConverter_R.convertToMat(RightFrame).clone();
                         RightFrameMat=RightFrameSrcMat.clone();
+
                         Point2f center=new Point2f(RightFrameSrcMat.cols()/2,RightFrameSrcMat.rows()/2);
                         Mat affineTrans=opencv_imgproc.getRotationMatrix2D(center,180.0,1.0);
                         opencv_imgproc.warpAffine(RightFrameSrcMat,RightFrameMat,affineTrans,RightFrameMat.size());
+                        */
 
                         if(EyeNum==Tool.NOT_LEYE&&IsTest)//只有右眼情况下
                         {
-                            recorder.record(RightFrame);//记录视频
+                            //recorder.record(RightFrame);//记录视频
                         }
                     }
 
@@ -1111,24 +1104,27 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         {
                             continue;
                         }
-                        /*图像旋转180度*/
+                        LeftFrameMat=matConverter_L.convertToMat(LeftFrame);
+                        /*
+                        //图像旋转180度
                         LeftFrameMat=new Mat();
                         Mat LeftFrameSrcMat=matConverter_L.convertToMat(LeftFrame).clone();
                         LeftFrameMat=LeftFrameSrcMat.clone();
                         Point2f center=new Point2f(LeftFrameSrcMat.cols()/2,LeftFrameSrcMat.rows()/2);
                         Mat affineTrans=opencv_imgproc.getRotationMatrix2D(center,180.0,1.0);
                         opencv_imgproc.warpAffine(LeftFrameSrcMat,LeftFrameMat,affineTrans,LeftFrameMat.size());
+                        */
 
                         if(EyeNum==Tool.NOT_REYE&&IsTest)//只有左眼情况下
                         {
-                            recorder.record(LeftFrame);//记录左眼视频
+                            //recorder.record(LeftFrame);//记录左眼视频
                         }
                         if(EyeNum==Tool.ALL_EYE&&IsTest)//在双眼视频情况下
                         {
                             //记录双眼视频
-                            Mat mergeMat=Tool.MergeMat(LeftFrameMat,RightFrameMat);
-                            Frame mergeFrame=matConverter.convert(mergeMat);
-                            recorder.record(mergeFrame);
+                            //Mat mergeMat=Tool.MergeMat(LeftFrameMat,RightFrameMat);
+                            //Frame mergeFrame=matConverter.convert(mergeMat);
+                            //recorder.record(mergeFrame);
                         }
                     }
                     if(EyeNum==Tool.VEDIO_ONLY_EYE)
@@ -1405,10 +1401,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     videoStop();
                     break;
                 }
-                catch (FFmpegFrameRecorder.Exception e)
-                {
-                    L.e("视频记录出错: "+e.getMessage());
-                }
                 catch (Exception e)
                 {
                     L.e("其他错误：  "+e.getMessage());
@@ -1419,18 +1411,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     //视频停止操作
     private void videoStop()
     {
-        if(IsTest&&(EyeNum==Tool.ALL_EYE||EyeNum==Tool.NOT_LEYE||EyeNum==Tool.NOT_REYE))
-        {
-            try
-            {
-                recorder.stop();
-                recorder.release();
-            }
-            catch (FFmpegFrameRecorder.Exception e)
-            {
-                L.d("视频保存出错");
-            }
-        }
         IsTest=false;
         /*诊断结果*/
         final boolean diagnosticResult=calculate.judgeDiagnosis();//诊断结果

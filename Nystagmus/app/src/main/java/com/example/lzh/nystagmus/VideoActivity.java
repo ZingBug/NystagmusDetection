@@ -34,6 +34,7 @@ import com.bumptech.glide.GlideBuilder;
 import com.bumptech.glide.request.target.SimpleTarget;
 import com.bumptech.glide.request.transition.Transition;
 import com.example.lzh.nystagmus.Utils.Box;
+import com.example.lzh.nystagmus.Utils.L;
 import com.example.lzh.nystagmus.Utils.T;
 import com.example.lzh.nystagmus.Utils.Tool;
 import com.example.lzh.nystagmus.Utils.VideoInfo;
@@ -41,6 +42,8 @@ import com.example.lzh.nystagmus.Utils.VideoInfoAdapter;
 import com.example.lzh.nystagmus.Utils.VideoItemDecoration;
 
 import java.io.File;
+import java.io.IOError;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -127,14 +130,24 @@ public class VideoActivity extends AppCompatActivity {
             if(!file.isDirectory())
             {
                 deleteFile(Tool.VideoStoragePath);
-                file.delete();
-                file.mkdir();
+                if(file.delete())
+                {
+                    L.d("NystagmusMovies文件删除成功");
+                }
+                if(file.mkdirs())
+                {
+                    L.d("NystagmusMovies文件夹建立成功");
+                }
             }
         }
         else
         {
-            file.mkdir();
+            if(file.mkdirs())
+            {
+                L.d("NystagmusMovies文件夹建立成功");
+            }
         }
+
     }
     @Override
     public boolean onOptionsItemSelected(MenuItem item)
