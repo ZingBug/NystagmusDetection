@@ -460,7 +460,6 @@ public class ImgProcess {
         opencv_imgproc.cvLine(img,left,right,color,thickness,8,0);
         //绘制竖线
         opencv_imgproc.cvLine(img,above,below,color,thickness,8,0);
-        return;
     }
     /**
      * 眼睛图像识别处理

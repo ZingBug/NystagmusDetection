@@ -517,6 +517,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         //开始工作
         processThread.setRate(readThread.getRate());
+        STOP=false;
         readThread.start();
         processThread.start();
         L.d("视频开始播放");
@@ -533,6 +534,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             //如果正在处理图像，则立即停止当前处理
             processThread.setStop(true);
         }
+        STOP=false;
         Intent intent=new Intent("android.intent.action.GET_CONTENT");
         intent.setType("video/*");
         intent.addCategory(Intent.CATEGORY_OPENABLE);//和GET_CONTENT一起用
@@ -871,7 +873,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         {
             this.grabber1=grabber1;
             this.rate=grabber1.getFrameRate();
-            this.delay=(int)(1000/rate);
+            this.delay=(int)(100/rate);
             this.stop=false;
             this.frameNum=0;
         }
@@ -880,7 +882,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             this.grabber1=grabber1;
             this.grabber2=grabber2;
             this.rate=grabber1.getFrameRate();
-            this.delay=(int)(1000/rate);
+            this.delay=(int)(100/rate);
             this.stop=false;
             this.frameNum=0;
         }
@@ -888,7 +890,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         {
             this.grabber1=grabber1;
             this.rate=grabber1.getFrameRate();
-            this.delay=(int)(1000/rate);
+            this.delay=(int)(100/rate);
             this.stop=false;
             this.frameNum=0;
         }
@@ -896,7 +898,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         {
             this.grabber2=grabber2;
             this.rate=grabber2.getFrameRate();
-            this.delay=(int)(1000/rate);
+            this.delay=(int)(100/rate);
             this.stop=false;
             this.frameNum=0;
         }
@@ -905,7 +907,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             this.grabber1=grabber1;
             this.grabber2=grabber2;
             this.rate=grabber1.getFrameRate();
-            this.delay=(int)(1000/rate);
+            this.delay=(int)(100/rate);
             this.stop=false;
             this.frameNum=0;
         }
@@ -1014,11 +1016,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         private double rate;//帧率
         private int secondTime;//时间,秒为单位
 
+        private Timer timer;
+        private int oldFrameNum;
+        private int second;
+
         private ProcessImageThread()
         {
             this.stop=false;
             this.secondTime=0;
             this.frameNum=0;
+            this.timer=new Timer();
+            oldFrameNum=0;
+            second=1;
         }
         private ProcessImageThread(double rate)
         {
@@ -1047,6 +1056,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         @Override
         public void run() {
+            timer.schedule(task,1000,1000);
             while (!stop)
             {
                 try
@@ -1407,11 +1417,55 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
             }
         }
+
+        TimerTask task=new TimerTask() {
+            @Override
+            public void run() {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(oldFrameNum==0)
+                        {
+                            oldFrameNum=frameNum;
+                            T.showShort(MainActivity.this,"第"+Integer.toString(second)+"秒："+Integer.toString(frameNum));
+                        }
+                        else if(oldFrameNum==frameNum)
+                        {
+                            timer.cancel();
+                        }
+                        else
+                        {
+                            T.showShort(MainActivity.this,"第"+Integer.toString(second)+"秒："+Integer.toString(frameNum-oldFrameNum));
+                            oldFrameNum=frameNum;
+                        }
+                        second++;
+
+                    }
+                });
+
+                //L.d(Integer.toString(frameNum));
+            }
+        };
     }
     //视频停止操作
     private void videoStop()
     {
         IsTest=false;
+        STOP=false;
+        //停止线程
+        if(readThread!=null)
+        {
+            readThread.setStop(true);
+        }
+        if(processThread!=null)
+        {
+            processThread.setStop(true);
+        }
+
+        frameLocalQueue.clear();
+        frameWebLeftQueue.clear();
+        frameWebRightQueue.clear();
+
         /*诊断结果*/
         final boolean diagnosticResult=calculate.judgeDiagnosis();//诊断结果
 
