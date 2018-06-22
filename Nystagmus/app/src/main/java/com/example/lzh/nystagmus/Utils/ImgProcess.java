@@ -68,20 +68,11 @@ import static org.bytedeco.javacpp.opencv_ml.SVM.C;
 
 public class ImgProcess {
     private double EyeRatio;
-    private int EyeNum;
-    private Mat inimg=new Mat();//输入双眼视频，目前用不到
-    private Mat outimg=new Mat();//输出双眼视频，目前也用不到
-    private Mat Reye=new Mat();
-    private Mat Leye=new Mat();
+
+    private Mat eye=new Mat();
+
     private Size size=new Size(9,9);
-    private MatVector Rcontours=new MatVector();
-    private MatVector Lcontours=new MatVector();
-    private double Lmaxarea=0;//左眼最大轮廓
-    private int LmaxAreaIndex=0;//左眼最大轮廓下标
-    private double Rmaxarea=0;//右眼最大轮廓
-    private int RmaxAreaIndex=0;//右眼最大轮廓下标
-    private CvRect Rrect=new CvRect();
-    private CvRect Lrect=new CvRect();
+
     private Scalar blue=new Scalar(0,0,255,0);
     private Scalar green=new Scalar(0,255,0,0);
     private Scalar red=new Scalar(255,0,0,0);
@@ -90,12 +81,11 @@ public class ImgProcess {
     private CvScalar cvgreen=new CvScalar(0,255,0,0);
     private CvScalar cvred=new CvScalar(255,0,0,0);
     private CvScalar cvblack=new CvScalar(0,0,0,0);
-    private Mat OriginalLeftEye=new Mat();//用于保存原始图像
-    private Mat OriginalRightEye=new Mat();//用于保存原始图像
-    private Vector<Box> Lcircles=new Vector<Box>();
-    private Vector<Box> Rcircles=new Vector<Box>();
-    private IplImage LeyeImage;
-    private IplImage ReyeImage;
+    private Mat OriginalEye=new Mat();//用于保存原始图像
+
+    private Vector<Box> circles=new Vector<Box>();
+
+    private IplImage eyeImage;
 
     /**
      * 默认构造函数
@@ -104,70 +94,24 @@ public class ImgProcess {
     {}
     /**
      * 开始参数设置
-     * @param leye 输入左眼图像
-     * @param reye 输入右眼图像
-     * @param eyeratio 眼睛轮廓高宽比，用于闭眼检测
-     * @param eyenum 眼睛数目
      */
-    public void Start(Mat leye, Mat reye, double eyeratio, int eyenum)
+    public void Start(Mat eye,double eyeratio)
     {
-        Reye=new Mat(reye);
-        Leye=new Mat(leye);
+        this.eye=new Mat(eye);
         EyeRatio=eyeratio;
-        EyeNum=eyenum;
-        LeyeImage=new IplImage(leye);
-        ReyeImage=new IplImage(reye);
+        eyeImage=new IplImage(eye);
         //保存原始图像数据
-        OriginalLeftEye=new Mat(leye);
-        OriginalRightEye=new Mat(reye);
+        OriginalEye=new Mat(eye);
     }
     /**
-     * 输出双眼图像
-     * @return 双眼图像
+     * 输出眼睛图像
+     * @return 眼睛图像
      */
-    public Mat Outputimg()
+    public Mat Outeye()
     {
-        return outimg;
+        return eye;
     }
-    /**
-     * 输出右眼图像
-     * @return 右眼图像
-     */
-    public Mat OutReye()
-    {
-        return Reye;
-        //return OriginalRightEye;
-    }
-    /**
-     * 输出左眼图像
-     * @return 左眼图像
-     */
-    public Mat OutLeye()
-    {
-        return Leye;
-        //return OriginalLeftEye;
-    }
-    /**
-     * 图像左右分割
-     * @param divedeImg 源图像
-     * @return ture：分割成功，false：分割失败
-     */
-    private boolean DivideEye(final Mat divedeImg)
-    {
-        if(divedeImg.rows()>0&&divedeImg.cols()>0)
-        {
-            Rect reye_box = new Rect(0, 1, divedeImg.cols()/2, divedeImg.rows() - 1);
-            Rect leye_box = new Rect(divedeImg.cols()/2, 1, divedeImg.cols()/2-1, divedeImg.rows() - 1);
-            Leye=new Mat(divedeImg,reye_box);
-            Reye=new Mat(divedeImg,leye_box);
 
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
     /**
      * 滤波、灰度化等处理，返回图像便于边缘检测
      * @param grayimg0 源图像
@@ -464,144 +408,72 @@ public class ImgProcess {
     /**
      * 眼睛图像识别处理
      */
-    public void ProcessSeparate()
+    public void Process()
     {
-        Mat Rgryaimg=new Mat();
-        Mat Lgrayimg=new Mat();
-        Mat Redgeimg;
-        Mat Ledgeimg;
         double temparea;
-        boolean IsLeye=false;
-        boolean IsReye=false;
 
-        CvMemStorage Lstorage=CvMemStorage.create();
-        CvMemStorage Rstorage=CvMemStorage.create();
-        CvSeq cvLcontour=new CvSeq(null);
-        CvSeq cvRcontour=new CvSeq(null);
-        CvSeq cvtempLcontour=new CvSeq(null);
-        CvSeq cvtempRcontour=new CvSeq(null);
-        CvSeq cvLcontourKeep=new CvSeq(null);//用于绘制轮廓
-        CvSeq cvRcontourKeep=new CvSeq(null);//用于绘制轮廓
-        IplImage LmatImage;
-        IplImage RmatImage;
+        CvMemStorage storage=CvMemStorage.create();
 
-        if(EyeNum==Tool.NOT_LEYE||EyeNum==Tool.ALL_EYE||EyeNum==Tool.VEDIO_EYE)
+        CvSeq cvContour=new CvSeq(null);
+        CvSeq cvtempContour=new CvSeq(null);
+        CvSeq cvContourKeep=new CvSeq(null);//用于绘制轮廓
+
+
+        Mat grayImg=GrayDetect(eye);
+        Mat edgeImg=EdgeDetect(grayImg);
+        IplImage matImg=new IplImage(edgeImg);
+        opencv_imgproc.cvFindContours(matImg,storage,cvContour,Loader.sizeof(CvContour.class), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE);
+
+
+        if(!cvContour.isNull()&&cvContour.elem_size()>0)
         {
-            //此时有右眼
-            Rgryaimg=GrayDetect(Reye);
-            Redgeimg=EdgeDetect(Rgryaimg);
-            RmatImage=new IplImage(Redgeimg);
-            opencv_imgproc.cvFindContours(RmatImage,Rstorage,cvRcontour,Loader.sizeof(CvContour.class), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE);
-            IsReye=true;
-        }
-        if(EyeNum==Tool.NOT_REYE||EyeNum==Tool.ALL_EYE||EyeNum==Tool.VEDIO_EYE||EyeNum==Tool.VEDIO_ONLY_EYE)
-        {
-            //此时有左眼
-            Lgrayimg=GrayDetect(Leye);
-            Ledgeimg=EdgeDetect(Lgrayimg);
-            LmatImage=new IplImage(Ledgeimg);
-            opencv_imgproc.cvFindContours(LmatImage,Lstorage,cvLcontour,Loader.sizeof(CvContour.class), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE);
-            IsLeye=true;
-        }
-        if(!cvLcontour.isNull()&&cvLcontour.elem_size()>0&&IsLeye)
-        {
-            //左眼有轮廓
-            while (cvLcontour != null && !cvLcontour.isNull())
+            //眼睛有轮廓
+            double maxarea=0;//代表最大面积
+            while (cvContour != null && !cvContour.isNull())
             {
-                temparea=opencv_imgproc.cvContourArea(cvLcontour);
-                if(temparea>Lmaxarea)
+                temparea=opencv_imgproc.cvContourArea(cvContour);
+
+                if(temparea>maxarea)
                 {
-                    Lmaxarea=temparea;
-                    cvtempLcontour=cvLcontour;
+                    maxarea=temparea;
+                    cvtempContour=cvContour;
                     continue;
                 }
-                cvLcontour=cvLcontour.h_next();
+                cvContour=cvContour.h_next();
             }
-            if(!cvtempLcontour.isNull())
+            if(!cvtempContour.isNull())
             {
-                cvLcontourKeep=new CvSeq(cvtempLcontour);
-                Vector<Point> leftPoints=new Vector<Point>();
-                for(int i=0;i<cvtempLcontour.total();++i)
+                cvContourKeep=new CvSeq(cvtempContour);
+                Vector<Point> points=new Vector<Point>();
+                for(int i=0;i<cvtempContour.total();++i)
                 {
-                    Point p=new Point(opencv_core.cvGetSeqElem(cvtempLcontour,i));
-                    leftPoints.add(p);
+                    Point p=new Point(opencv_core.cvGetSeqElem(cvtempContour,i));
+                    points.add(p);
                 }
                 //闭眼检测
-                Lrect=opencv_imgproc.cvBoundingRect(cvtempLcontour);
-                if((Lrect.width()/(float)Lrect.height())<EyeRatio&&(Lrect.height()/(float)Lrect.width())<EyeRatio&&Lrect.width()>0&&Lrect.height()>0)
+                CvRect rect=opencv_imgproc.cvBoundingRect(cvtempContour);
+                if((rect.width()/(float)rect.height())<EyeRatio&&(rect.height()/(float)rect.width())<EyeRatio&&rect.width()>0&&rect.height()>0)
                 {
-                    Box Lbox=CircleFit(Lgrayimg,leftPoints);//左眼拟合圆检测
-                    if(Lbox.getR()!=0)
+                    Box box=CircleFit(grayImg,points);//左眼拟合圆检测
+                    if(box.getR()!=0)
                     {
                         //如果半径不为0
-                        Lcircles.add(Lbox);
-                    }
-                }
-            }
-
-        }
-        if(!cvRcontour.isNull()&&cvRcontour.elem_size()>0&&IsReye)
-        {
-            //右眼有轮廓
-            while (cvRcontour!=null&&!cvRcontour.isNull())
-            {
-                temparea=opencv_imgproc.cvContourArea(cvRcontour);
-                if(temparea>Rmaxarea)
-                {
-                    Rmaxarea=temparea;
-                    cvtempRcontour=cvRcontour;
-                    continue;
-                }
-                cvRcontour=cvRcontour.h_next();
-            }
-            if(!cvtempRcontour.isNull())
-            {
-                cvRcontourKeep=new CvSeq(cvtempRcontour);
-                Vector<Point> rightPoints=new Vector<Point>();
-                for(int i=0;i<cvtempRcontour.total();++i)
-                {
-                    Point p=new Point(opencv_core.cvGetSeqElem(cvtempRcontour,i));
-                    rightPoints.add(p);
-                }
-                //闭眼检测
-                Rrect=opencv_imgproc.cvBoundingRect(cvtempRcontour);
-                if((Rrect.width()/(float)Rrect.height())<EyeRatio&&(Rrect.height()/(float)Rrect.width())<EyeRatio&&Rrect.width()>0&&Rrect.height()>0)
-                {
-                    Box Rbox=CircleFit(Rgryaimg,rightPoints);//左眼拟合圆检测
-                    if(Rbox.getR()!=0)
-                    {
-                        //如果半径不为0
-                        Rcircles.add(Rbox);
+                        circles.add(box);
                     }
                 }
             }
         }
-        if(Lcircles.size()>0)
+
+        if(circles.size()>0)
         {
-            PlotC(Lcircles,LeyeImage);//绘制左眼圆心和圆轮廓
-        }
-        if(Rcircles.size()>0)
-        {
-            PlotC(Rcircles,ReyeImage);//绘制右眼圆心和圆轮廓
+            PlotC(circles,eyeImage);//绘制左眼圆心和圆轮廓
         }
 
-        if(IsLeye)
-        {
-            //opencv_imgproc.cvDrawContours(LeyeImage,cvLcontourKeep,cvgreen,cvgreen,1);//使用javacv绘制轮廓
-        }
-        if(IsReye)
-        {
-            //opencv_imgproc.cvDrawContours(ReyeImage,cvRcontourKeep,cvgreen,cvgreen,1);//使用javacv绘制轮廓
-        }
-        Reye=new Mat(ReyeImage);
-        Leye=new Mat(LeyeImage);
+        opencv_imgproc.cvDrawContours(eyeImage,cvContourKeep,cvgreen,cvgreen,1);//使用javacv绘制轮廓
+        eye=new Mat(eyeImage);
     }
-    public Iterable<Box> Lcircles()
+    public Iterable<Box> circles()
     {
-        return Lcircles;
-    }
-    public Iterable<Box> Rcircles()
-    {
-        return Rcircles;
+        return circles;
     }
 }

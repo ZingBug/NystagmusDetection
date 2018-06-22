@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
@@ -76,40 +77,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private DrawerLayout mDrawerLayout;
     private static final int OPEN_VIDEO=1;
     private static final int OPEN_CAMERA=2;
-    private FFmpegFrameGrabber capture;//打开本地视频
-    private FFmpegFrameGrabber vacpLeft;//打开左眼网络视频
-    private FFmpegFrameGrabber vacpRight;//打开右眼网络视频
     private static final int Storage_RequestCode=1;//存储权限申请码
-    private FFmpegFrameRecorder recorder;//定义录制变量
-
-    private Frame LeftFrame;
-    private Frame AllFrame;
-    private Frame RightFrame;
-    private Frame tempLeftFrame;
-    private Frame tempRightFrame;
-    private static OpenCVFrameConverter.ToIplImage matConverter = new OpenCVFrameConverter.ToIplImage();//Mat转Frame
-    private static OpenCVFrameConverter.ToIplImage matConverter_L = new OpenCVFrameConverter.ToIplImage();//Mat转Frame
-    private static OpenCVFrameConverter.ToIplImage matConverter_R = new OpenCVFrameConverter.ToIplImage();//Mat转Frame
-    private AndroidFrameConverter bitmapConverter = new  AndroidFrameConverter();//Frame转bitmap
-
-    private Mat LeftFrameMat;
-    private Mat RightFrameMat;
-    private Bitmap LeftView;
-    private Bitmap RightView;
-    private Bitmap TempView;
-    private Mat Leye;
-    private Mat Reye;
-    private Mat AllEyeMat;
-    private Message message;
-    private Message ChartMessage;
-    private Mat blankMat;
-
-    private int EyeNum=Tool.NOT_ALLEYE;//眼睛数目
-    private boolean IsLeyeCenter=false;//用于判断左眼是否确定初始位置
-    private boolean IsReyeCenter=false;//用于判断右眼是否确定初始位置
-    private Box LeyeCenter=new Box();//用于保存左眼的初始位置
-    private Box ReyeCenter=new Box();//用于保存右眼的初始位置
-    //private int FrameNum=0;//视频播放帧数
 
     private LineChart chart_x;//X波形图
     private LineChart chart_y;//y波形图
@@ -118,9 +86,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private SharedPreferences pref;//调用存储文件
 
-    private Calculate calculate;//瞳孔数据计算器
-    //private int calNum;//计算时间间隔
-    //private int secondTime;//视频测试时间
 
     /*SPV相关*/
     private TextView LeyeXRealtimeAndMaxSPV;
@@ -139,46 +104,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     /*悬浮菜单按钮*/
     private FloatingActionsMenu menuChange;
 
-    /*测试用*/
-    private boolean IsTest=false;//用于判断是否开始测试
-
-    /*视频保存名称*/
-    private String VideoStorgeName;
-    //private CoordinatorLayout MainContainer;
-
-    /*滤波*/
-    private PointFilter filterL;//左眼滤波器
-    private PointFilter filterR;//右眼滤波器
-
-    /*与上一帧做比较*/
-    private Box preLeyeBox;
-    private Box preReyeBox;
-
-    /*handle,主要用于UI更新*/
-    private final MyViewHandle mViewHandle=new MyViewHandle(this);
-    private final MyToastHandle mToastHandle=new MyToastHandle(this);
-
-    //图像阻塞队列
-    private BlockingDeque<Frame> frameLocalQueue=new LinkedBlockingDeque<>(Tool.QueueSize);
-    private BlockingDeque<Frame> frameWebRightQueue=new LinkedBlockingDeque<>(Tool.QueueSize);
-    private BlockingDeque<Frame> frameWebLeftQueue=new LinkedBlockingDeque<>(Tool.QueueSize);
-
-    //线程间通信信号量
-    private static boolean STOP=false;
-
-    //线程
-    private ReadImageThread readThread;//读线程
-    private ProcessImageThread processThread;//处理线程
-
-    private boolean done;
-    private synchronized boolean isDone()
-    {
-        return done;
-    }
-    private synchronized void setDone(boolean done1)
-    {
-        done=done1;
-    }
+    private VideoTask task_leye;//左眼任务
+    private VideoTask task_reye;//右眼任务
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -268,16 +195,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         //打开视频列表界面
                         Intent intent=new Intent(MainActivity.this,VideoActivity.class);
                         startActivityForResult(intent,Tool.VideoTransmitTestCode);
-                        if((readThread!=null)&&readThread.isRunning()&&readThread.isAlive())
+                        if(task_leye!=null&&task_leye.getStatus()==AsyncTask.Status.RUNNING)
                         {
-                            //如果正在读取视频，则立即停止当前读取
-                            readThread.setStop(true);
+                            task_leye.cancel(true);
                         }
-                        if((processThread!=null)&&processThread.isRunning()&&processThread.isAlive())
+                        if(task_reye!=null&&task_reye.getStatus()==AsyncTask.Status.RUNNING)
                         {
-                            //如果正在处理图像，则立即停止当前处理
-                            processThread.setStop(true);
+                            task_reye.cancel(true);
                         }
+
                         break;
                     }
                     default:
@@ -300,10 +226,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Tool.AddressRightEye=pref.getString("RightCameraAddress",Tool.AddressRightEye);
         Tool.RecognitionGrayValue=pref.getInt("GrayValue",Tool.RecognitionGrayValue);
 
-        blankMat=new Mat();
-        TempView=BitmapFactory.decodeResource(getResources(),R.drawable.novideo);
-        Frame TempFrame=bitmapConverter.convert(TempView);
-        blankMat=matConverter.convertToMat(TempFrame);
         L.d("项目打开");
     }
     @Override
@@ -378,163 +300,31 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
     private void openCamera()
     {
-        if((readThread!=null)&&readThread.isRunning()&&readThread.isAlive())
+        if(task_leye!=null&&task_leye.getStatus()==AsyncTask.Status.RUNNING)
         {
-            //如果正在读取视频，则立即停止当前读取
-            readThread.setStop(true);
+            task_leye.cancel(true);
         }
-        if((processThread!=null)&&processThread.isRunning()&&processThread.isAlive())
+        if(task_reye!=null&&task_reye.getStatus()==AsyncTask.Status.RUNNING)
         {
-            //如果正在处理图像，则立即停止当前处理
-            processThread.setStop(true);
+            task_reye.cancel(true);
         }
 
-        EyeNum=Tool.ALL_EYE;
-        vacpLeft=new FFmpegFrameGrabber(Tool.AddressLeftEye);
-        vacpRight=new FFmpegFrameGrabber(Tool.AddressRightEye);
-        try {
-            vacpLeft.start();
-        }
-        catch (FrameGrabber.Exception e)
-        {
-            T.showShort(this,"左眼链接失败");
-            L.d("左眼链接失败"+e.toString());
-            EyeNum=Tool.NOT_LEYE;
-        }
-        try {
-            vacpRight.start();
-            vacpRight.setImageHeight(vacpRight.getImageHeight()-1);//此处减1是为了避免后续地址复用
-        }
-        catch (org.bytedeco.javacv.FrameGrabber.Exception e)
-        {
-            T.showShort(this,"右眼链接失败");
-            L.d("右眼链接失败"+e.toString());
-            if(EyeNum==Tool.ALL_EYE)
-            {
-                EyeNum=Tool.NOT_REYE;
-            }
-            else
-            {
-                EyeNum=Tool.NOT_ALLEYE;
-                T.showShort(this,"双眼全部连接失败");
-                L.d("双眼全部连接失败");
-                return;
-            }
-        }
-
-        IsTest=false;//还没有开始测试
-        if(EyeNum==Tool.NOT_REYE)
-        {
-            //如果没有右眼
-            RightFrameMat=new Mat();
-            TempView=BitmapFactory.decodeResource(getResources(),R.drawable.novideo);
-            Frame TempFrame=bitmapConverter.convert(TempView);
-            RightFrameMat=matConverter.convertToMat(TempFrame);
-        }
-        if(EyeNum==Tool.NOT_LEYE)
-        {
-            //如果没有左眼
-            LeftFrameMat=new Mat();
-            TempView=BitmapFactory.decodeResource(getResources(),R.drawable.novideo);
-            Frame TempFrame=bitmapConverter.convert(TempView);
-            LeftFrameMat=matConverter.convertToMat(TempFrame);
-        }
-
-        /*下面是参数初始化*/
-        clearEntey(chart_x);
-        clearEntey(chart_y);
-        clearEntey(chart_rotation);
-        IsLeyeCenter=false;
-        IsReyeCenter=false;
-        LeyeCenter=new Box();
-        ReyeCenter=new Box();
-
-        calculate=new Calculate();//瞳孔数据计算器
-
-        filterL=new PointFilter();//左眼瞳孔坐标滤波器
-        filterR=new PointFilter();//右眼瞳孔坐标滤波器
-
-        message=new Message();
-        message.obj="视频开始播放";
-        mToastHandle.sendMessage(message);
-
-        LeyeXRealtimeAndMaxSPV.setText("0/0");
-        ReyeXRealtimeAndMaxSPV.setText("0/0");
-        LeyeYRealtimeAndMaxSPV.setText("0/0");
-        ReyeYRealtimeAndMaxSPV.setText("0/0");
-        LeyeHighperiod.setText("0s");
-        ReyeHighperiod.setText("0s");
-        DiagnosticResult.setText(R.string.defalut);
-        LeyeDirectionResult.setText(R.string.defalut);
-        ReyeDirectionResult.setText(R.string.defalut);
-        DiagnosticResult.setTextColor(MainActivity.this.getResources().getColor(R.color.black));
-
-        //图像队列清空
-        frameWebRightQueue.clear();//清空链表
-        frameWebLeftQueue.clear();//清空链表
-
-        //线程初始化
-        readThread=new ReadImageThread();
-        processThread=new ProcessImageThread();
-
-        /*视频录制初始化*/
-        switch (EyeNum){
-            case Tool.NOT_LEYE:
-            {
-                //只有右眼
-                VideoStorgeName=Tool.GetVideoStoragePath();
-                recorder=new FFmpegFrameRecorder(VideoStorgeName,vacpRight.getImageWidth(),vacpRight.getImageHeight(),vacpRight.getAudioChannels());//初始化录制视频图像的高、宽等参数
-                recorder.setFrameNumber(vacpRight.getFrameNumber());//设置录制帧率
-                readThread.setRightGrabber(vacpRight);//设置右眼读取视频
-                break;
-            }
-            case Tool.NOT_REYE:
-            {
-                //只有左眼
-                VideoStorgeName=Tool.GetVideoStoragePath();
-                recorder=new FFmpegFrameRecorder(VideoStorgeName,vacpLeft.getImageWidth(),vacpLeft.getImageHeight(),vacpLeft.getAudioChannels());
-                recorder.setFrameNumber(vacpLeft.getFrameNumber());
-                readThread.setLeftGrabber(vacpLeft);//设置左眼读取视频
-                break;
-            }
-            case Tool.ALL_EYE:
-            {
-                //双眼都在
-                VideoStorgeName=Tool.GetVideoStoragePath();
-                recorder=new FFmpegFrameRecorder(VideoStorgeName,vacpLeft.getImageWidth()+vacpRight.getImageWidth(),Tool.Max(vacpLeft.getImageHeight(),vacpRight.getImageHeight()));
-                recorder.setFrameNumber(Tool.Min(vacpLeft.getFrameNumber(),vacpRight.getFrameNumber()));
-                readThread.setGrabber(vacpLeft,vacpRight);//设置双眼读取视频
-                break;
-            }
-            default:
-            {
-                //如果不存在以上情况的话
-                return;
-            }
-        }
-        recorder.setVideoCodec(avcodec.AV_CODEC_ID_MPEG4);//设置视频录制编码格式
-        recorder.setFormat("mp4");//设置录制视频保存类型
-
-        //开始工作
-        processThread.setRate(readThread.getRate());
-        STOP=false;
-        readThread.start();
-        processThread.start();
-        L.d("视频开始播放");
+        task_leye=new VideoTask(this,true);//注意不是本地视频
+        task_reye=new VideoTask(this,false);
+        //开始执行
+        task_leye.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,Tool.AddressLeftEye);
+        task_reye.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,Tool.AddressRightEye);
     }
     private void openVideo()
     {
-        if((readThread!=null)&&readThread.isRunning()&&readThread.isAlive())
+        if(task_leye!=null&&task_leye.getStatus()==AsyncTask.Status.RUNNING)
         {
-            //如果正在读取视频，则立即停止当前读取
-            readThread.setStop(true);
+            task_leye.cancel(true);
         }
-        if((processThread!=null)&&processThread.isRunning()&&processThread.isAlive())
+        if(task_reye!=null&&task_reye.getStatus()==AsyncTask.Status.RUNNING)
         {
-            //如果正在处理图像，则立即停止当前处理
-            processThread.setStop(true);
+            task_reye.cancel(true);
         }
-        STOP=false;
         Intent intent=new Intent("android.intent.action.GET_CONTENT");
         intent.setType("video/*");
         intent.addCategory(Intent.CATEGORY_OPENABLE);//和GET_CONTENT一起用
@@ -542,114 +332,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
     private void startPlay()
     {
-        if(!(EyeNum==Tool.NOT_LEYE||EyeNum==Tool.NOT_REYE||EyeNum==Tool.ALL_EYE))
+        if(task_leye!=null&&task_leye.getStatus()==AsyncTask.Status.RUNNING)
         {
-            message=new Message();
-            message.obj="无视频源";
-            L.d("无视频源");
-            mToastHandle.sendMessage(message);
-            return;
+            task_leye.isTest=true;
         }
-
-        /*下面是参数初始化*/
-        clearEntey(chart_x);
-        clearEntey(chart_y);
-        IsLeyeCenter=false;
-        IsReyeCenter=false;
-        LeyeCenter=new Box();
-        ReyeCenter=new Box();
-
-        IsTest=true;//开始测试
-
-        L.d("开始测试");
-        message=new Message();
-        message.obj="开始测试";
-        mToastHandle.sendMessage(message);
-
-        //视频开始录制
-        //try
+        if(task_reye!=null&&task_reye.getStatus()==AsyncTask.Status.RUNNING)
         {
-            //recorder.start();
+            task_reye.isTest=true;
         }
-        //catch (FrameRecorder.Exception e)
-        {
-            //L.d("视频开启录制失败");
-        }
-
-
     }
     private void stopPlay()
     {
-        if((readThread!=null)&&readThread.isRunning()&&readThread.isAlive()||(processThread!=null)&&processThread.isRunning()&&processThread.isAlive())
+        if(task_leye!=null&&task_leye.getStatus()==AsyncTask.Status.RUNNING)
         {
-            IsTest=false;
-
-            //停止线程
-            if(readThread!=null)
-            {
-                readThread.setStop(true);
-            }
-            if(processThread!=null)
-            {
-                processThread.setStop(true);
-            }
-
-            frameLocalQueue.clear();
-            frameWebLeftQueue.clear();
-            frameWebRightQueue.clear();
-
-            /*诊断结果*/
-            final boolean diagnosticResult=calculate.judgeDiagnosis();//诊断结果
-
-            runOnUiThread(new Runnable(){
-                @Override
-                public void run(){
-                    if(diagnosticResult)
-                    {
-                        DiagnosticResult.setText(R.string.normal);
-                    }
-                    else
-                    {
-                        DiagnosticResult.setText(R.string.abnormal);
-                        DiagnosticResult.setTextColor(MainActivity.this.getResources().getColor(R.color.red));
-                    }
-                    /*快相方向*/
-                    if(calculate.judegeEye(true))
-                    {
-                        //左眼有处理结果
-                        boolean leyeDir=calculate.judgeFastPhase(true);
-                        LeyeDirectionResult.setText(leyeDir? R.string.left:R.string.right);
-                    }
-                    if(calculate.judegeEye(false))
-                    {
-                        //右眼有处理结果
-                        boolean reyeDir=calculate.judgeFastPhase(false);
-                        ReyeDirectionResult.setText(reyeDir?R.string.left:R.string.right);
-                    }
-                }
-            });
-            L.d("手动关闭视频播放，定时器关闭");
-            message=new Message();
-            message.obj="视频播放结束";
-            mToastHandle.sendMessage(message);
-            if(EyeNum==Tool.VEDIO_EYE||EyeNum==Tool.VEDIO_ONLY_EYE)
-            {
-                try {
-                    capture.stop();
-                    capture.release();
-                }
-                catch (org.bytedeco.javacv.FrameGrabber.Exception e)
-                {
-                    L.d("释放本地视频");
-                }
-            }
+            task_leye.cancel(true);
         }
-        else
+        if(task_reye!=null&&task_reye.getStatus()==AsyncTask.Status.RUNNING)
         {
-            L.d("请先播放视频");
-            message=new Message();
-            message.obj="请先播放视频";
-            mToastHandle.sendMessage(message);
+            task_reye.cancel(true);
         }
     }
     private void initialChart(LineChart chart,String label)
@@ -690,45 +390,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         chart.setData(data);
 
     }
-    private void addEntey(final LineChart add_chart, final float add_x,final float add_y,final int add_flag)
-    {
-        //flag:0 左眼; flag:1 右眼
 
-        MainActivity.this.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                LineData data=add_chart.getData();
-                Entry entry=new Entry(add_x,add_y);
-                data.addEntry(entry,add_flag);
-                add_chart.notifyDataSetChanged();
-                add_chart.invalidate();
-            }
-        });
-
-    }
-    private void clearEntey(LineChart chart)
-    {
-        LineData oldData=chart.getData();
-        oldData.clearValues();
-        ArrayList<ILineDataSet> dataSets = new ArrayList<ILineDataSet>();
-        for(int i=0;i<2;++i)
-        {
-            ArrayList<Entry> values=new ArrayList<>();
-            values.add(new Entry(0,0));//初始设置为(0,0)坐标
-
-            LineDataSet set=new LineDataSet(values,i==0?"左眼":"右眼");
-            set.setMode(set.getMode()==LineDataSet.Mode.CUBIC_BEZIER?LineDataSet.Mode.LINEAR:LineDataSet.Mode.CUBIC_BEZIER);//设置为平滑曲线
-            set.setDrawCircles(false);//取消显示坐标点圆圈
-            set.setDrawValues(false);//取消显示坐标值
-            set.setCubicIntensity(0.15f);//设置曲线曲率
-            set.setLineWidth(2f);//设置线的宽度
-            set.setColor(colors[i]);//设置线的颜色
-            dataSets.add(set);
-        }
-        LineData data=new LineData(dataSets);
-        chart.setData(data);
-        chart.notifyDataSetChanged();
-    }
     @Override
     protected void onActivityResult(int requestCode,int resultCode,Intent data)
     {
@@ -745,7 +407,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     VideoPath=bundle.getString("VideoPath");
                     isTransmit=true;
                     mDrawerLayout.closeDrawers();//关闭侧滑栏
-
                 }
             }
             case OPEN_VIDEO:
@@ -758,96 +419,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     }
                     //视频文件地址为：/storage/emulated/0/test.mp4
                     //视频文件必须为mjpeg编码的video
-                    capture=new FFmpegFrameGrabber(VideoPath);
-                    try
-                    {
-                        capture.start();
-                    }
-                    catch (org.bytedeco.javacv.FrameGrabber.Exception e)
-                    {
-                        T.showShort(this,"视频加载失败");
-                        L.d("视频加载失败"+e.toString());
-                        break;
-                    }
-                    T.showShort(this,"视频加载成功");
-                    L.d("视频加载成功");
 
-                    //开始播放
-                    Frame tempFrame=null;
-                    try {
-
-                        tempFrame=capture.grabFrame();
-                        if(tempFrame==null)
-                        {
-                            T.showShort(this,"播放失败");
-                            L.d("播放失败");
-                            return;
-                        }
-                    }
-                    catch (org.bytedeco.javacv.FrameGrabber.Exception e)
-                    {
-                        T.showShort(this,"播放失败");
-                        L.d("播放失败");
-                        return;
-                    }
-                    if(tempFrame.imageWidth/((float)tempFrame.imageHeight)>1.5)
-                    {
-                        //双眼视频
-                        EyeNum=Tool.VEDIO_EYE;
-                    }
-                    else
-                    {
-                        //单眼视频
-                        EyeNum= Tool.VEDIO_ONLY_EYE;
-                        RightFrameMat=new Mat();
-                        TempView=BitmapFactory.decodeResource(getResources(),R.drawable.novideo);
-                        Frame TempFrame=bitmapConverter.convert(TempView);
-                        RightFrameMat=matConverter.convertToMat(TempFrame);
-                    }
-
-                    /*下面是参数初始化*/
-
-                    clearEntey(chart_x);
-                    clearEntey(chart_y);
-                    clearEntey(chart_rotation);
-                    IsLeyeCenter=false;
-                    IsReyeCenter=false;
-                    LeyeCenter=new Box();
-                    ReyeCenter=new Box();
-
-                    L.d("视频开始播放");
-
-                    filterL=new PointFilter();//左眼瞳孔坐标滤波器
-                    filterR=new PointFilter();//右眼瞳孔坐标滤波器
-
-                    frameLocalQueue.clear();
-                    readThread=new ReadImageThread();
-                    processThread=new ProcessImageThread();
-
-                    calculate=new Calculate();//瞳孔数据计算器
-
-                    readThread.setLeftGrabber(capture);
-                    processThread.setRate(readThread.getRate());
-
-                    message=new Message();
-                    message.obj="视频开始播放";
-                    mToastHandle.sendMessage(message);
-
-                    LeyeXRealtimeAndMaxSPV.setText("0/0");
-                    ReyeXRealtimeAndMaxSPV.setText("0/0");
-                    LeyeYRealtimeAndMaxSPV.setText("0/0");
-                    ReyeYRealtimeAndMaxSPV.setText("0/0");
-                    LeyeHighperiod.setText("0s");
-                    ReyeHighperiod.setText("0s");
-                    DiagnosticResult.setText(R.string.defalut);
-                    LeyeDirectionResult.setText(R.string.defalut);
-                    ReyeDirectionResult.setText(R.string.defalut);
-                    DiagnosticResult.setTextColor(MainActivity.this.getResources().getColor(R.color.black));
-
-                    //开始播放
-                    IsTest=true;
-                    readThread.start();
-                    processThread.start();
+                    task_leye=new VideoTask(this,true,true);//注意是本地视频
+                    task_reye=new VideoTask(this,false,true);
+                    //开始执行
+                    task_leye.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,VideoPath);
+                    task_reye.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,VideoPath);
+                    task_leye.isTest=true;
+                    task_reye.isTest=true;
                 }
                 break;
             }
@@ -855,696 +434,364 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
         }
     }
-    //读取图像线程
-    private class ReadImageThread extends Thread
+
+    //视频任务
+    private class VideoTask extends AsyncTask<String,Object,String>
     {
-        private FFmpegFrameGrabber grabber1;//视频1
-        private FFmpegFrameGrabber grabber2;//视频2
-        private double rate;//帧速率
-        private int delay;//延迟
-        private boolean stop;
-        private int frameNum;
-        private ReadImageThread()
-        {
-            this.stop=false;
-            this.frameNum=0;
+        //用于表示眼睛
+        private boolean eye;//true为左眼，false为右眼
+        private String eyeInfo;
+        //用于格式转换
+        private AndroidFrameConverter bitmapConverter=new AndroidFrameConverter();
+        private OpenCVFrameConverter.ToIplImage matConverter=new OpenCVFrameConverter.ToIplImage();
+        //用于显示
+        private Mat mat_display=null;
+        private Frame frame_display=null;
+        private Bitmap bitmap_display=null;
+        //视频源
+        private String cameraAddress;
+        private FFmpegFrameGrabber capture;
+        //活动引用
+        private final WeakReference<MainActivity> mActivity;
+        private MainActivity activity;
+        //是否为本地视频
+        private boolean isLocalVideo;
+        //用于图像接收处理
+        private Frame frame;
+        private Mat frameMat;
+        private Mat eyeMat;
+        //视频相关参数
+        private int frameNum=0;//帧数
+        private double rate=0;//帧速率
+        private int secondTime=0;//测试时间（秒）
+        //是否开始测试
+        private boolean isTest=false;
+        //滤波
+        private PointFilter filter=new PointFilter();
+        //与上一帧做比较
+        private Box preEyeBox;
+        //初始圆心坐标值
+        private boolean isEyeCenter=false;
+        private Box eyeCenter=new Box();
+        //瞳孔圆心数据计算
+        private Calculate calculate=new Calculate();//保证计算过程在同一个线程内，即在UI主线程内。
+
+
+        public VideoTask(MainActivity activity,boolean eye,boolean isLocalVideo) {
+            this.eye=eye;
+            this.mActivity=new WeakReference<>(activity);
+            this.activity=this.mActivity.get();
+            this.eyeInfo=eye?"左眼":"右眼";
+            this.isLocalVideo=isLocalVideo;
         }
-        private ReadImageThread(FFmpegFrameGrabber grabber1)
+        public VideoTask(MainActivity activity,boolean eye)
         {
-            this.grabber1=grabber1;
-            this.rate=grabber1.getFrameRate();
-            this.delay=(int)(100/rate);
-            this.stop=false;
-            this.frameNum=0;
+            this(activity,eye,false);
         }
-        private ReadImageThread(FFmpegFrameGrabber grabber1,FFmpegFrameGrabber grabber2)
-        {
-            this.grabber1=grabber1;
-            this.grabber2=grabber2;
-            this.rate=grabber1.getFrameRate();
-            this.delay=(int)(100/rate);
-            this.stop=false;
-            this.frameNum=0;
-        }
-        public void setLeftGrabber(FFmpegFrameGrabber grabber1)
-        {
-            this.grabber1=grabber1;
-            this.rate=grabber1.getFrameRate();
-            this.delay=(int)(100/rate);
-            this.stop=false;
-            this.frameNum=0;
-        }
-        public void setRightGrabber(FFmpegFrameGrabber grabber2)
-        {
-            this.grabber2=grabber2;
-            this.rate=grabber2.getFrameRate();
-            this.delay=(int)(100/rate);
-            this.stop=false;
-            this.frameNum=0;
-        }
-        public void setGrabber(FFmpegFrameGrabber grabber1,FFmpegFrameGrabber grabber2)
-        {
-            this.grabber1=grabber1;
-            this.grabber2=grabber2;
-            this.rate=grabber1.getFrameRate();
-            this.delay=(int)(100/rate);
-            this.stop=false;
-            this.frameNum=0;
-        }
-        public void setStop(boolean stop)
-        {
-            this.stop=stop;
-        }
-        public boolean isRunning()
-        {
-            return !stop;
-        }
-        public int getFrameNum()
-        {
-            return frameNum;
-        }
-        public double getRate()
-        {
-            return this.rate;
-        }
-        public int getDelay()
-        {
-            return this.delay;
-        }
+
+        //此方法在主线程中执行，在异步任务执行之前，此方法会被调用，一般用于一些准备工作
+        //主要做一些波形初始化等操作
         @Override
-        public void run() {
-            while (!stop)
-            {
-                try
-                {
-                    this.frameNum++;
-                    Frame frame1=grabber1.grabFrame();
-                    if(frame1==null)
-                    {
-                        //T.showShort(MainActivity.this,"播放结束");
-                        L.d("读取结束");
-                        this.stop=true;
-                        STOP=true;
-                        break;
-                    }
-                    switch (EyeNum)
-                    {
-                        case Tool.VEDIO_EYE:
-                        case Tool.VEDIO_ONLY_EYE:
-                        {
-                            //本地视频
-                            frameLocalQueue.put(frame1);
-                            break;
-                        }
-                        case Tool.NOT_LEYE:
-                        {
-                            //网络右眼视频
-                            frameWebRightQueue.put(frame1);
-                            break;
-                        }
-                        case Tool.NOT_REYE:
-                        {
-                            //网络左眼视频
-                            frameWebLeftQueue.put(frame1);
-                            break;
-                        }
-                        case Tool.ALL_EYE:
-                        {
-                            //网络双眼视频
-                            Frame frame2=grabber2.grabFrame();
-                            if(frame2==null)
-                            {
-                                //T.showShort(MainActivity.this,"播放结束");
-                                L.d("读取结束");
-                                this.stop=true;
-                                STOP=true;
-                                break;
-                            }
-                            frameWebLeftQueue.put(frame1);
-                            frameWebRightQueue.put(frame2);
-                        }
-                        default:break;
-                    }
-
-                    Thread.sleep(delay);
-                }
-                catch (FrameGrabber.Exception e)
-                {
-                    T.showShort(MainActivity.this,"播放失败"+e.toString());
-                    L.e("读取失败 "+e.getMessage());
-                    this.stop=true;
-                    STOP=true;
-                    break;
-                }
-                catch (InterruptedException e)
-                {
-                    T.showShort(MainActivity.this,"播放失败"+e.toString());
-                    L.e("读取失败 "+e.getMessage());
-                    this.stop=true;
-                    STOP=true;
-                    break;
-                }
-            }
-        }
-    }
-    //视频处理线程
-    private class ProcessImageThread extends Thread
-    {
-        private boolean stop;
-        private int delay;//延迟
-        private int frameNum;//帧数
-        private double rate;//帧率
-        private int secondTime;//时间,秒为单位
-
-        private Timer timer;
-        private int oldFrameNum;
-        private int second;
-
-        private ProcessImageThread()
-        {
-            this.stop=false;
-            this.secondTime=0;
-            this.frameNum=0;
-            this.timer=new Timer();
-            oldFrameNum=0;
-            second=1;
-        }
-        private ProcessImageThread(double rate)
-        {
-            this.stop=false;
-            this.rate=rate;
-            this.delay=(int)(1000/rate);
+        protected void onPreExecute() {
+            //参数初始化
+            this.isTest=false;
             this.frameNum=0;
             this.secondTime=0;
-        }
-        public void setRate(double rate)
-        {
-            this.stop=false;
-            this.rate=rate;
-            this.delay=(int)(1000/rate);
-            this.frameNum=0;
-            this.secondTime=0;
-        }
-        public void setStop(boolean stop)
-        {
-            this.stop=stop;
-        }
-        public boolean isRunning()
-        {
-            return !this.stop;
+            this.isEyeCenter=false;
+            this.preEyeBox=null;
+            //界面初始化
+            clearEntey(chart_x);
+            clearEntey(chart_y);
+            clearEntey(chart_rotation);
+            LeyeXRealtimeAndMaxSPV.setText("0/0");
+            ReyeXRealtimeAndMaxSPV.setText("0/0");
+            LeyeYRealtimeAndMaxSPV.setText("0/0");
+            ReyeYRealtimeAndMaxSPV.setText("0/0");
+            LeyeHighperiod.setText("0s");
+            ReyeHighperiod.setText("0s");
+            DiagnosticResult.setText(R.string.defalut);
+            LeyeDirectionResult.setText(R.string.defalut);
+            ReyeDirectionResult.setText(R.string.defalut);
+            DiagnosticResult.setTextColor(MainActivity.this.getResources().getColor(R.color.black));
         }
 
+        //此方法在主线程中执行，在doInBackground方法执行完成以后此方法会被调用
         @Override
-        public void run() {
-            timer.schedule(task,1000,1000);
-            while (!stop)
+        protected void onPostExecute(String s) {
+            stopVideo();
+        }
+
+        //此方法在主线程中执行，当任务被取消后执行
+        @Override
+        protected void onCancelled(String s) {
+            stopVideo();
+        }
+
+        private void stopVideo()//视频结束流程
+        {
+            this.isTest=false;
+            //诊断结果
+            boolean diagnosticResult=calculate.judgeDiagnosis();//诊断结果
+            String preResultStr=DiagnosticResult.getText().toString();
+            boolean preResult=preResultStr.equals(this.activity.getResources().getString(R.string.abnormal));
+
+            if(diagnosticResult&&!preResult)
             {
-                try
-                {
-                    Leye=new Mat();
-                    Reye=new Mat();
-
-                    if(EyeNum==Tool.NOT_LEYE||EyeNum==Tool.ALL_EYE)
-                    {
-                        //此时有右眼
-                        if(STOP&&frameWebRightQueue.size()==0)
-                        {
-                            T.showShort(MainActivity.this,"视频播放结束");
-                            L.d("视频播放结束");
-                            this.stop=true;
-                            videoStop();
-                            break;
-                        }
-                        RightFrame=frameWebRightQueue.poll(500L,TimeUnit.MILLISECONDS);
-                        if(RightFrame==null)
-                        {
-                            continue;
-                        }
-                        RightFrameMat=matConverter_R.convertToMat(RightFrame);
-                        /*
-                        //图像旋转180度
-                        RightFrameMat=new Mat();
-                        Mat RightFrameSrcMat=matConverter_R.convertToMat(RightFrame).clone();
-                        RightFrameMat=RightFrameSrcMat.clone();
-
-                        Point2f center=new Point2f(RightFrameSrcMat.cols()/2,RightFrameSrcMat.rows()/2);
-                        Mat affineTrans=opencv_imgproc.getRotationMatrix2D(center,180.0,1.0);
-                        opencv_imgproc.warpAffine(RightFrameSrcMat,RightFrameMat,affineTrans,RightFrameMat.size());
-                        */
-
-                        if(EyeNum==Tool.NOT_LEYE&&IsTest)//只有右眼情况下
-                        {
-                            //recorder.record(RightFrame);//记录视频
-                        }
-                    }
-
-                    if(EyeNum==Tool.NOT_REYE||EyeNum==Tool.ALL_EYE)
-                    {
-                        //此时有左眼
-                        if(STOP&&frameWebLeftQueue.size()==0)
-                        {
-                            T.showShort(MainActivity.this,"视频播放结束");
-                            L.d("视频播放结束");
-                            this.stop=true;
-                            videoStop();
-                            break;
-                        }
-                        LeftFrame=frameWebLeftQueue.poll(500L,TimeUnit.MILLISECONDS);
-                        if(LeftFrame==null)
-                        {
-                            continue;
-                        }
-                        LeftFrameMat=matConverter_L.convertToMat(LeftFrame);
-                        /*
-                        //图像旋转180度
-                        LeftFrameMat=new Mat();
-                        Mat LeftFrameSrcMat=matConverter_L.convertToMat(LeftFrame).clone();
-                        LeftFrameMat=LeftFrameSrcMat.clone();
-                        Point2f center=new Point2f(LeftFrameSrcMat.cols()/2,LeftFrameSrcMat.rows()/2);
-                        Mat affineTrans=opencv_imgproc.getRotationMatrix2D(center,180.0,1.0);
-                        opencv_imgproc.warpAffine(LeftFrameSrcMat,LeftFrameMat,affineTrans,LeftFrameMat.size());
-                        */
-
-                        if(EyeNum==Tool.NOT_REYE&&IsTest)//只有左眼情况下
-                        {
-                            //recorder.record(LeftFrame);//记录左眼视频
-                        }
-                        if(EyeNum==Tool.ALL_EYE&&IsTest)//在双眼视频情况下
-                        {
-                            //记录双眼视频
-                            //Mat mergeMat=Tool.MergeMat(LeftFrameMat,RightFrameMat);
-                            //Frame mergeFrame=matConverter.convert(mergeMat);
-                            //recorder.record(mergeFrame);
-                        }
-                    }
-                    if(EyeNum==Tool.VEDIO_ONLY_EYE)
-                    {
-                        //单眼本地视频
-                        if(STOP&&frameLocalQueue.size()==0)
-                        {
-                            T.showShort(MainActivity.this,"视频播放结束");
-                            L.d("视频播放结束");
-                            this.stop=true;
-                            videoStop();
-                            break;
-                        }
-                        LeftFrameMat=new Mat();
-                        LeftFrame=frameLocalQueue.poll(500L,TimeUnit.MILLISECONDS);
-                        if(LeftFrame==null)
-                        {
-                            continue;
-                        }
-                        LeftFrameMat=matConverter.convertToMat(LeftFrame);
-
-                        //进行SPV等计算分析
-                        if(IsTest&&this.frameNum%this.rate==0)
-                        {
-                            ++secondTime;
-                            calculate.processLeyeX(secondTime);
-                            calculate.processLeyeY(secondTime);
-
-                            final double leyeXRealtime=calculate.getRealTimeSPVX(secondTime,true);
-                            final double leyeXMax=calculate.getMaxSPVX(true);
-                            final double leyeYRealtime=calculate.getRealTimeSPVY(secondTime,true);
-                            final double leyeYMax=calculate.getMaxSPVY(true);
-                            final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
-                            final String period_L=getPeriod(maxSecond_L);
-                            //强制在UI线程下更新
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    LeyeXRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(leyeXRealtime),df.format(leyeXMax)));
-                                    LeyeYRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(leyeYRealtime),df.format(leyeYMax)));
-                                    LeyeHighperiod.setText(period_L);
-                                }
-                            });
-                        }
-                    }
-                    if(EyeNum==Tool.VEDIO_EYE)
-                    {
-                        //双眼视频都在
-                        AllEyeMat=new Mat();
-                        if(STOP&&frameLocalQueue.size()==0)
-                        {
-                            T.showShort(MainActivity.this,"视频播放结束");
-                            L.d("视频播放结束");
-                            this.stop=true;
-                            videoStop();
-                            break;
-                        }
-                        AllFrame=frameLocalQueue.poll(500L,TimeUnit.MILLISECONDS);
-                        if(AllFrame==null)
-                        {
-                            continue;
-                        }
-                        AllEyeMat=matConverter.convertToMat(AllFrame);
-                        //图像切割
-                        //借助于Rect的ROI分割
-                        if(AllEyeMat==null)
-                        {
-                            continue;
-                        }
-                        Rect reye_box=new Rect(0,1,AllEyeMat.cols()/2,AllEyeMat.rows()-1);
-                        Rect leye_box=new Rect(AllEyeMat.cols()/2,1,AllEyeMat.cols()/2-1,AllEyeMat.rows()-1);
-                        LeftFrameMat=new Mat(AllEyeMat,reye_box);
-                        RightFrameMat=new Mat(AllEyeMat,leye_box);
-
-                        if(IsTest&&this.frameNum%this.rate==0)
-                        {
-                            ++this.secondTime;
-                            calculate.processLeyeX(secondTime);
-                            calculate.processReyeX(secondTime);
-                            calculate.processLeyeY(secondTime);
-                            calculate.processReyeY(secondTime);
-                            final double leyeXRealtime=calculate.getRealTimeSPVX(secondTime,true);
-                            final double reyeXRealtime=calculate.getRealTimeSPVX(secondTime,false);
-                            final double leyeXMax=calculate.getMaxSPVX(true);
-                            final double reyeXMax=calculate.getMaxSPVX(false);
-                            final double leyeYRealtime=calculate.getRealTimeSPVY(secondTime,true);
-                            final double reyeYRealtime=calculate.getRealTimeSPVY(secondTime,false);
-                            final double leyeYMax=calculate.getMaxSPVY(true);
-                            final double reyeYMax=calculate.getMaxSPVY(false);
-                            final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
-                            final int maxSecond_R=calculate.getHighTidePeriod(false);//右眼
-                            final String period_L=getPeriod(maxSecond_L);
-                            final String period_R=getPeriod(maxSecond_R);
-                            //强制在UI线程下更新
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    LeyeXRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(leyeXRealtime),df.format(leyeXMax)));//保留两位小数点
-                                    ReyeXRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(reyeXRealtime),df.format(reyeXMax)));
-                                    LeyeYRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(leyeYRealtime),df.format(leyeYMax)));
-                                    ReyeYRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(reyeYRealtime),df.format(reyeYMax)));
-                                    LeyeHighperiod.setText(period_L);
-                                    ReyeHighperiod.setText(period_R);
-                                }
-                            });
-                        }
-                    }
-                    if(IsTest&&(EyeNum==Tool.NOT_LEYE||EyeNum==Tool.NOT_REYE||EyeNum==Tool.ALL_EYE))
-                    {
-                        //用于播放视频时更新SPV
-                        if(this.frameNum%this.rate==0)
-                        {
-                            ++secondTime;
-                            if(EyeNum==Tool.NOT_REYE||EyeNum==Tool.ALL_EYE)
-                            {
-                                //左眼
-                                calculate.processLeyeX(secondTime);
-                                calculate.processLeyeY(secondTime);
-                                final double leyeXRealtime=calculate.getRealTimeSPVX(secondTime,true);
-                                final double leyeXMax=calculate.getMaxSPVX(true);
-                                final double leyeYRealtime=calculate.getRealTimeSPVY(secondTime,true);
-                                final double leyeYMax=calculate.getMaxSPVY(true);
-                                final int maxSecond_L=calculate.getHighTidePeriod(true);//左眼
-                                final String period_L=getPeriod(maxSecond_L);
-                                //强制在UI线程下更新
-                                runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        LeyeXRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(leyeXRealtime),df.format(leyeXMax)));//保留两位小数点
-                                        LeyeYRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(leyeYRealtime),df.format(leyeYMax)));
-                                        LeyeHighperiod.setText(period_L);
-                                    }
-                                });
-                            }
-                            if(EyeNum==Tool.NOT_LEYE||EyeNum==Tool.ALL_EYE)
-                            {
-                                //右眼
-                                calculate.processReyeX(secondTime);
-                                calculate.processReyeY(secondTime);
-                                final double reyeXRealtime=calculate.getRealTimeSPVX(secondTime,false);
-                                final double reyeXMax=calculate.getMaxSPVX(false);
-                                final double reyeYRealtime=calculate.getRealTimeSPVY(secondTime,false);
-                                final double reyeYMax=calculate.getMaxSPVY(false);
-                                final int maxSecond_R=calculate.getHighTidePeriod(false);//右眼
-                                final String period_R=getPeriod(maxSecond_R);
-                                //强制在UI线程下更新
-                                runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        ReyeXRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(reyeXRealtime),df.format(reyeXMax)));
-                                        ReyeYRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(reyeYRealtime),df.format(reyeYMax)));
-                                        ReyeHighperiod.setText(period_R);
-                                    }
-                                });
-                            }
-                        }
-                    }
-                    if(IsTest)
-                    {
-                        ++this.frameNum;
-                    }
-                    ImgProcess pro=new ImgProcess();
-                    pro.Start(LeftFrameMat,RightFrameMat,1.8,EyeNum);
-                    pro.ProcessSeparate();
-                    Leye=pro.OutLeye();
-                    Reye=pro.OutReye();
-                    if(IsTest)
-                    {
-                        //开始测试后进行波形分析
-                        for(Box box:pro.Lcircles())
-                        {
-                            //先滤波处理
-                            filterL.add(box);
-                            box=filterL.get();
-
-                            //圆心坐标更新
-                            if(preLeyeBox==null)
-                            {
-                                preLeyeBox=box;
-                                break;
-                            }
-
-                            //与上一帧做对比
-                            if(Tool.distance(box,preLeyeBox)>(box.getR()+preLeyeBox.getR()/1.5)&&(Math.abs(box.getR()-preLeyeBox.getR())>box.getR()/2.0))
-                            {
-                                return;
-                            }
-
-                            //左眼坐标
-                            if(!IsLeyeCenter)
-                            {
-                                //左眼初始坐标
-                                IsLeyeCenter=true;
-                                LeyeCenter.setX(box.getX());
-                                LeyeCenter.setY(box.getY());
-                            }
-                            else
-                            {
-                                //后续相对地址是基于第一帧位置的
-                                double tempL=Math.atan((box.getY()-preLeyeBox.getY())/(box.getX()-preLeyeBox.getX()));
-                                if(Double.isNaN(tempL))
-                                {
-                                    tempL=0;
-                                }
-                                addEntey(chart_rotation,frameNum/(float)rate,(float) tempL,0);
-                                addEntey(chart_x,frameNum/(float)rate,(float) (box.getX()-LeyeCenter.getX()),0);
-                                addEntey(chart_y,frameNum/(float)rate,(float) (box.getY()-LeyeCenter.getY()),0);
-
-                                calculate.addLeyeX(box.getX()-LeyeCenter.getX());
-                                calculate.addLeyeY(box.getY()-LeyeCenter.getY());
-                            }
-                            preLeyeBox=box;
-                        }
-                        for(Box box:pro.Rcircles())
-                        {
-                            //先滤波处理
-                            filterR.add(box);
-                            box=filterR.get();
-
-                            //圆心坐标更新
-                            if(preReyeBox==null)
-                            {
-                                preReyeBox=box;
-                                break;
-                            }
-
-                            //与上一帧做对比
-                            if(Tool.distance(box,preReyeBox)>(box.getR()+preReyeBox.getR()/1.5)&&(Math.abs(box.getR()-preReyeBox.getR())>box.getR()/2.0))
-                            {
-                                return;
-                            }
-
-                            //右眼坐标
-                            if(!IsReyeCenter)
-                            {
-                                //右眼初始坐标
-                                IsReyeCenter=true;
-                                ReyeCenter.setX(box.getX());
-                                ReyeCenter.setY(box.getY());
-                            }
-                            else
-                            {
-                                //后续相对地址是基于第一帧位置的
-                                double tempR=Math.atan((box.getY()-preReyeBox.getY())/(box.getX()-preReyeBox.getX()));
-                                if(Double.isNaN(tempR))
-                                {
-                                    tempR=0;
-                                }
-                                addEntey(chart_rotation,frameNum/(float)rate,(float) tempR,1);
-                                addEntey(chart_x,frameNum/(float)rate,(float)(box.getX()-ReyeCenter.getX()),1);
-                                addEntey(chart_y,frameNum/(float)rate,(float)(box.getY()-ReyeCenter.getY()),1);
-
-                                calculate.addReyeX(box.getX()-ReyeCenter.getX());
-                                calculate.addReyeY(box.getY()-ReyeCenter.getY());
-                            }
-                            preReyeBox=box;
-                        }
-                    }
-
-                    //图像格式转换
-                    tempLeftFrame=matConverter.convert(Leye);
-                    tempRightFrame=matConverter.convert(Reye);
-                    LeftView=bitmapConverter.convert(tempLeftFrame);
-                    RightView=bitmapConverter.convert(tempRightFrame);
-
-                    message=new Message();
-                    mViewHandle.sendMessage(message);
-                }
-                catch (InterruptedException e)
-                {
-                    T.showShort(MainActivity.this,"视频处理出现问题");
-                    L.e("视频处理出现问题: "+e.getMessage());
-                    this.stop=true;
-                    videoStop();
-                    break;
-                }
-                catch (Exception e)
-                {
-                    L.e("其他错误：  "+e.getMessage());
-                }
+                //如果诊断结果正常
+                DiagnosticResult.setText(R.string.normal);
+                DiagnosticResult.setTextColor(this.activity.getResources().getColor(R.color.black));
             }
-        }
-
-        TimerTask task=new TimerTask() {
-            @Override
-            public void run() {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if(oldFrameNum==0)
-                        {
-                            oldFrameNum=frameNum;
-                            T.showShort(MainActivity.this,"第"+Integer.toString(second)+"秒："+Integer.toString(frameNum));
-                        }
-                        else if(oldFrameNum==frameNum)
-                        {
-                            timer.cancel();
-                        }
-                        else
-                        {
-                            T.showShort(MainActivity.this,"第"+Integer.toString(second)+"秒："+Integer.toString(frameNum-oldFrameNum));
-                            oldFrameNum=frameNum;
-                        }
-                        second++;
-
-                    }
-                });
-
-                //L.d(Integer.toString(frameNum));
+            else
+            {
+                //如果诊断结果不正常
+                DiagnosticResult.setText(R.string.abnormal);
+                DiagnosticResult.setTextColor(this.activity.getResources().getColor(R.color.red));
             }
-        };
-    }
-    //视频停止操作
-    private void videoStop()
-    {
-        IsTest=false;
-        STOP=false;
-        //停止线程
-        if(readThread!=null)
-        {
-            readThread.setStop(true);
-        }
-        if(processThread!=null)
-        {
-            processThread.setStop(true);
-        }
-
-        frameLocalQueue.clear();
-        frameWebLeftQueue.clear();
-        frameWebRightQueue.clear();
-
-        /*诊断结果*/
-        final boolean diagnosticResult=calculate.judgeDiagnosis();//诊断结果
-
-        runOnUiThread(new Runnable(){
-            @Override
-            public void run(){
-                if(diagnosticResult)
+            //快相方向
+            if(calculate.judegeEye())
+            {
+                boolean eyeDir=calculate.judgeFastPhase();//眼睛快相方向
+                if(eye)
                 {
-                    DiagnosticResult.setText(R.string.normal);
+                    //左眼
+                    LeyeDirectionResult.setText(eyeDir?R.string.left:R.string.right);
                 }
                 else
                 {
-                    DiagnosticResult.setText(R.string.abnormal);
-                    DiagnosticResult.setTextColor(MainActivity.this.getResources().getColor(R.color.red));
+                    //右眼
+                    ReyeDirectionResult.setText(eyeDir?R.string.left:R.string.right);
                 }
-                /*快相方向*/
-                if(calculate.judegeEye(true))
+            }
+            if(isLocalVideo)
+            {
+                //在本地视频情况下，释放视频源
+                try
                 {
-                    //左眼有处理结果
-                    boolean leyeDir=calculate.judgeFastPhase(true);
-                    LeyeDirectionResult.setText(leyeDir? R.string.left:R.string.right);
+                    this.capture.release();
                 }
-                if(calculate.judegeEye(false))
+                catch (FrameGrabber.Exception e)
                 {
-                    //右眼有处理结果
-                    boolean reyeDir=calculate.judgeFastPhase(false);
-                    ReyeDirectionResult.setText(reyeDir?R.string.left:R.string.right);
+                    L.d("释放本地资源");
+                }
+
+            }
+            T.showShort(this.activity,"视频播放结束");
+        }
+
+        //此方法在子线程中执行，用于执行异步任务,注意这里的params就是AsyncTask的第一个参数类型。
+        //在此方法中可以通过调用publicProgress方法来更新任务进度，publicProgress会调用onProgressUpdate方法。
+        @Override
+        protected String doInBackground(String... strings) {
+            this.cameraAddress=strings[0];
+            this.capture=new FFmpegFrameGrabber(cameraAddress);
+            try
+            {
+                capture.start();
+                this.rate=capture.getFrameRate();
+            }
+            catch (FrameGrabber.Exception e)
+            {
+                return "摄像头链接失败";
+            }
+            while (true)
+            {
+                if(isCancelled())
+                {
+                    //任务被取消掉
+                    break;
+                }
+                try
+                {
+                    frame=null;
+                    frame=capture.grabFrame();
+                    if(frame==null)
+                    {
+                        return "视频源中止";
+                    }
+                }
+                catch (FrameGrabber.Exception e)
+                {
+                    return "视频源中止";
+                }
+
+                if(isLocalVideo&&eye)
+                {
+                    //如果是本地视频的左眼
+                    Mat mat=matConverter.convertToMat(frame);
+                    Rect reye_box=new Rect(0,1,mat.cols()/2,mat.rows()-1);
+                    frameMat=new Mat(mat,reye_box);
+                }
+                else if(isLocalVideo&&!eye)
+                {
+                    //如果是本地视频的右眼
+                    Mat mat=matConverter.convertToMat(frame);
+                    Rect leye_box=new Rect(mat.cols()/2,1,mat.cols()/2-1,mat.rows()-1);
+                    frameMat=new Mat(mat,leye_box);
+                }
+                else
+                {
+                    //网络单眼视频
+                    frameMat=matConverter.convertToMat(frame);
+                }
+                if(isTest)
+                {
+                    this.frameNum++;
+                }
+                ImgProcess pro=new ImgProcess();
+                pro.Start(frameMat,1.8);
+                pro.Process();
+                eyeMat=pro.Outeye();
+                float relativeRotation=0;//圆心相对旋转坐标
+                float relativeX=0;//圆心相对X坐标
+                float relativeY=0;//圆心相对Y坐标
+                boolean isCenter=false;//代表这帧图像是否存在圆心
+                if(isTest)
+                {
+                    //开始测试后进行波形分析
+                    for(Box box:pro.circles())
+                    {
+                        isCenter=true;
+                        //先滤波处理
+                        filter.add(box);
+                        box=filter.get();
+                        //圆心坐标更新
+                        if(preEyeBox==null)
+                        {
+                            preEyeBox=box;
+                        }
+                        if(Tool.distance(box,preEyeBox)>(box.getR()+preEyeBox.getR()/1.5)&&(Math.abs(box.getR()-preEyeBox.getR())>box.getR()/2.0))
+                        {
+                            continue;
+                        }
+                        //坐标中心
+                        if(!isEyeCenter)
+                        {
+                            isEyeCenter=true;
+                            eyeCenter.setX(box.getX());
+                            eyeCenter.setY(box.getY());
+                        }
+                        else
+                        {
+                            //后续相对坐标是基于第一帧位置
+                            double temp=Math.atan((box.getY()-preEyeBox.getY())/(box.getX()-preEyeBox.getX()));
+                            if(Double.isNaN(temp))
+                            {
+                                temp=0;
+                            }
+                            relativeRotation=(float)temp;
+                            relativeX=(float)(box.getX()-eyeCenter.getX());
+                            relativeY=(float)(box.getY()-eyeCenter.getY());
+                            //calculate.addEyeX(box.getX()-eyeCenter.getX());
+                            //calculate.addEyeY(box.getY()-eyeCenter.getY());
+                        }
+                        preEyeBox=box;
+                    }
+                }
+                publishProgress(eyeMat,isCenter,relativeRotation,relativeX,relativeY);
+            }
+            return "视频播放结束";
+        }
+        //此方法在主线程中执行，values的类型就是AsyncTask传入的第二个参数类型
+        @Override
+        protected void onProgressUpdate(Object... values) {
+            if(isCancelled())
+            {
+                return;
+            }
+            //眼睛图像显示
+            mat_display=(Mat)values[0];
+            if(mat_display==null)
+            {
+                return;
+            }
+            frame_display=matConverter.convert(mat_display);
+            bitmap_display=bitmapConverter.convert(frame_display);
+            if(eye)
+            {
+                this.activity.imageView_leye.setImageBitmap(bitmap_display);
+            }
+            else
+            {
+                this.activity.imageView_reye.setImageBitmap(bitmap_display);
+            }
+            //波形图绘制
+            boolean isCenter=(Boolean)values[1];
+            int flag=eye?0:1;
+            if(this.isTest&&isCenter)
+            {
+                //存在圆心的话，绘制波形图
+                float relativeRotation=(float)values[2];
+                float relativeX=(float)values[3];
+                float relativeY=(float)values[4];
+                addEntey(chart_rotation,frameNum/(float)rate,relativeRotation,flag);
+                addEntey(chart_x,frameNum/(float)rate,relativeX,flag);
+                addEntey(chart_y,frameNum/(float)rate,relativeY,flag);
+                //眼震参数计算
+                calculate.addEyeX(relativeX);
+                calculate.addEyeY(relativeY);
+            }
+            //眼震参数更新
+            if(this.isTest&&(this.frameNum%this.rate==0)&&(this.frameNum!=0))
+            {
+                this.secondTime++;
+                calculate.processEyeX(secondTime);
+                calculate.processEyeY(secondTime);
+                double realSPVX=calculate.getRealTimeSPVX(secondTime);
+                double maxSPVX=calculate.getMaxSPVX();
+                double realSPVY=calculate.getRealTimeSPVY(secondTime);
+                double maxSPVY=calculate.getMaxSPVY();
+                int maxSecond=calculate.getHighTidePeriod();
+                String period=getPeriod(maxSecond);
+                if(eye)
+                {
+                    //左眼
+                    LeyeXRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(realSPVX),df.format(maxSPVX)));//保留两位小数点
+                    LeyeYRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(realSPVY),df.format(maxSPVY)));
+                    LeyeHighperiod.setText(period);
+                }
+                else
+                {
+                    //右眼
+                    ReyeXRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(realSPVX),df.format(maxSPVX)));//保留两位小数点
+                    ReyeYRealtimeAndMaxSPV.setText(MergeRealtimeAndMax(df.format(realSPVY),df.format(maxSPVY)));
+                    ReyeHighperiod.setText(period);
                 }
             }
-        });
-        if(EyeNum==Tool.VEDIO_ONLY_EYE||EyeNum==Tool.VEDIO_EYE)
+        }
+        private void clearEntey(LineChart chart)
         {
-            try {
-                capture.release();
-            }
-            catch (org.bytedeco.javacv.FrameGrabber.Exception e)
+            LineData oldData=chart.getData();
+            oldData.clearValues();
+            ArrayList<ILineDataSet> dataSets = new ArrayList<ILineDataSet>();
+            for(int i=0;i<2;++i)
             {
-                L.d("释放本地视频");
+                ArrayList<Entry> values=new ArrayList<>();
+                values.add(new Entry(0,0));//初始设置为(0,0)坐标
+
+                LineDataSet set=new LineDataSet(values,i==0?"左眼":"右眼");
+                set.setMode(set.getMode()==LineDataSet.Mode.CUBIC_BEZIER?LineDataSet.Mode.LINEAR:LineDataSet.Mode.CUBIC_BEZIER);//设置为平滑曲线
+                set.setDrawCircles(false);//取消显示坐标点圆圈
+                set.setDrawValues(false);//取消显示坐标值
+                set.setCubicIntensity(0.15f);//设置曲线曲率
+                set.setLineWidth(2f);//设置线的宽度
+                set.setColor(colors[i]);//设置线的颜色
+                dataSets.add(set);
             }
-            message=new Message();
-            message.obj="视频播放结束";//代表视频播放结束
-            mToastHandle.sendMessage(message);
+            LineData data=new LineData(dataSets);
+            chart.setData(data);
+            chart.notifyDataSetChanged();
+        }
+
+        private void addEntey(LineChart add_chart,float add_x,float add_y,int add_flag)
+        {
+            //一定保证运行在UI主线程下
+            //flag:0 左眼; flag:1 右眼
+            LineData data=add_chart.getData();
+            Entry entry=new Entry(add_x,add_y);
+            data.addEntry(entry,add_flag);
+            add_chart.notifyDataSetChanged();
+            add_chart.invalidate();
         }
     }
 
-    //双眼瞳孔图像刷新显示
-    private static class MyViewHandle extends Handler{
-        private final WeakReference<MainActivity> mActivity;
-        public MyViewHandle(MainActivity activity)
-        {
-            mActivity=new WeakReference<MainActivity>(activity);
-        }
-
-        @Override
-        public void handleMessage(Message msg) {
-            MainActivity activity=mActivity.get();
-            if(activity!=null)
-            {
-                activity.imageView_leye.setImageBitmap(activity.LeftView);
-                activity.imageView_reye.setImageBitmap(activity.RightView);
-            }
-        }
-    }
-
-    //Toast提示
-    private static class MyToastHandle extends Handler{
-        private final WeakReference<MainActivity> mActivity;
-        public MyToastHandle(MainActivity activity)
-        {
-            mActivity=new WeakReference<MainActivity>(activity);
-        }
-
-        @Override
-        public void handleMessage(Message msg) {
-            MainActivity activity=mActivity.get();
-            if(activity!=null)
-            {
-                T.showShort(activity,msg.obj.toString());
-            }
-        }
-    }
 }
