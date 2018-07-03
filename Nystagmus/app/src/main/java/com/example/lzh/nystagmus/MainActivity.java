@@ -681,8 +681,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             relativeRotation=(float)temp;
                             relativeX=(float)(box.getX()-eyeCenter.getX());
                             relativeY=(float)(box.getY()-eyeCenter.getY());
-                            //calculate.addEyeX(box.getX()-eyeCenter.getX());
-                            //calculate.addEyeY(box.getY()-eyeCenter.getY());
                         }
                         preEyeBox=box;
                     }

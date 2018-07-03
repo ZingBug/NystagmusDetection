@@ -22,11 +22,11 @@ public class Tool {
     public static final int VEDIO_EYE=1;//本地视频双眼都在
     public static final int VEDIO_ONLY_EYE=6;//本地视频单眼
 
-    public static String AddressLeftEye="http://192.168.43.35:8080/?action=stream?dummy=param.mjpg";//左眼网络地址
-    public static String AddressRightEye="http://192.168.43.119:8080/?action=stream?dummy=param.mjpg";//右眼网络地址
+    public static String AddressLeftEye="http://192.168.43.127:8090/?action=stream?dummy=param.mjpg";//左眼网络地址
+    public static String AddressRightEye="http://192.168.43.231:8090/?action=stream?dummy=param.mjpg";//右眼网络地址
 
-    public static final String AddressLeftEyeDefault="http://192.168.43.35:8080/?action=stream?dummy=param.mjpg";//左眼网络地址
-    public static final String AddressRightEyeDefault="http://192.168.43.119:8090/?action=stream?dummy=param.mjpg";//右眼网络地址
+    public static final String AddressLeftEyeDefault="http://192.168.43.127:8090/?action=stream?dummy=param.mjpg";//左眼网络地址
+    public static final String AddressRightEyeDefault="http://192.168.43.231:8090/?action=stream?dummy=param.mjpg";//右眼网络地址
 
     public static final String RequestBingPic="http://guolin.tech/api/bing_pic";
 
