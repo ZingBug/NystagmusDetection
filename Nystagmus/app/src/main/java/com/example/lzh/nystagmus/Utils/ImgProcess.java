@@ -97,6 +97,8 @@ public class ImgProcess {
      */
     public void Start(Mat eye,double eyeratio)
     {
+        eye=CropImage(eye);
+        opencv_core.flip(eye,eye,1);//水平翻转
         this.eye=new Mat(eye);
         EyeRatio=eyeratio;
         eyeImage=new IplImage(eye);
@@ -112,6 +114,16 @@ public class ImgProcess {
         return eye;
     }
 
+    /**
+     * 截取图像
+     * @param image
+     * @return
+     */
+    private Mat CropImage(Mat image)
+    {
+        Rect box = new Rect(image.cols()/4, image.rows()/5, image.cols()/2, image.rows()*3/5);
+        return new Mat(image,box);
+    }
     /**
      * 滤波、灰度化等处理，返回图像便于边缘检测
      * @param grayimg0 源图像
@@ -469,7 +481,7 @@ public class ImgProcess {
             PlotC(circles,eyeImage);//绘制左眼圆心和圆轮廓
         }
 
-        opencv_imgproc.cvDrawContours(eyeImage,cvContourKeep,cvgreen,cvgreen,1);//使用javacv绘制轮廓
+        //opencv_imgproc.cvDrawContours(eyeImage,cvContourKeep,cvgreen,cvgreen,1);//使用javacv绘制轮廓
         eye=new Mat(eyeImage);
     }
     public Iterable<Box> circles()

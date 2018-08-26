@@ -645,6 +645,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 float relativeX=0;//圆心相对X坐标
                 float relativeY=0;//圆心相对Y坐标
                 boolean isCenter=false;//代表这帧图像是否存在圆心
+                String xSPV=null;//x轴SPV值
+                String ySPV=null;//y轴SPV值
+                String period=null;//时间区间
+                boolean isSPV=false;//代表是否有SPV更新
                 if(isTest)
                 {
                     //开始测试后进行波形分析
@@ -681,11 +685,30 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             relativeRotation=(float)temp;
                             relativeX=(float)(box.getX()-eyeCenter.getX());
                             relativeY=(float)(box.getY()-eyeCenter.getY());
+                            //添加参数
+                            calculate.addEyeX(relativeX);
+                            calculate.addEyeY(relativeY);
                         }
                         preEyeBox=box;
                     }
+                    if((this.frameNum%this.rate==0)&&(this.frameNum!=0))
+                    {
+                        //进行计算
+                        isSPV=true;
+                        this.secondTime++;
+                        calculate.processEyeX(secondTime);
+                        calculate.processEyeY(secondTime);
+                        double realSPVX=calculate.getRealTimeSPVX(secondTime);
+                        double maxSPVX=calculate.getMaxSPVX();
+                        double realSPVY=calculate.getRealTimeSPVY(secondTime);
+                        double maxSPVY=calculate.getMaxSPVY();
+                        int maxSecond=calculate.getHighTidePeriod();
+                        period=getPeriod(maxSecond);
+                        xSPV=MergeRealtimeAndMax(df.format(realSPVX),df.format(maxSPVX));
+                        ySPV=MergeRealtimeAndMax(df.format(realSPVY),df.format(maxSPVY));
+                    }
                 }
-                publishProgress(eyeMat,isCenter,relativeRotation,relativeX,relativeY);
+                publishProgress(eyeMat,isCenter,relativeRotation,relativeX,relativeY,isSPV,xSPV,ySPV,period);
             }
             return "视频播放结束";
         }
@@ -725,10 +748,31 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 addEntey(chart_x,frameNum/(float)rate,relativeX,flag);
                 addEntey(chart_y,frameNum/(float)rate,relativeY,flag);
                 //眼震参数计算
-                calculate.addEyeX(relativeX);
-                calculate.addEyeY(relativeY);
+                //calculate.addEyeX(relativeX);
+                //calculate.addEyeY(relativeY);
             }
             //眼震参数更新
+            boolean isSPV=(Boolean)values[5];
+            if(this.isTest&&isSPV) {
+                //可以更新眼震参数
+                String xSPV = (String) values[6];
+                String ySPV = (String) values[7];
+                String period = (String) values[8];
+                if (eye) {
+                    //左眼
+                    LeyeXRealtimeAndMaxSPV.setText(xSPV);
+                    LeyeYRealtimeAndMaxSPV.setText(ySPV);
+                    LeyeHighperiod.setText(period);
+                }
+                else
+                {
+                    //右眼
+                    ReyeXRealtimeAndMaxSPV.setText(xSPV);
+                    ReyeYRealtimeAndMaxSPV.setText(ySPV);
+                    ReyeHighperiod.setText(period);
+                }
+            }
+            /*
             if(this.isTest&&(this.frameNum%this.rate==0)&&(this.frameNum!=0))
             {
                 this.secondTime++;
@@ -755,6 +799,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     ReyeHighperiod.setText(period);
                 }
             }
+            */
         }
         private void clearEntey(LineChart chart)
         {
