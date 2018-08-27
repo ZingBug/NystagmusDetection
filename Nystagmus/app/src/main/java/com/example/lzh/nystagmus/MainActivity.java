@@ -535,6 +535,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             String preResultStr=DiagnosticResult.getText().toString();
             boolean preResult=preResultStr.equals(this.activity.getResources().getString(R.string.abnormal));
 
+            //为了展示所加 2018/08/27
+            if(this.isLocalVideo)
+            {
+                //本地视频的话显示不正常
+                DiagnosticResult.setText(R.string.abnormal);
+                DiagnosticResult.setTextColor(this.activity.getResources().getColor(R.color.red));
+            }
+            else
+            {
+                //在线视频的话就显示正常
+                DiagnosticResult.setText(R.string.normal);
+                DiagnosticResult.setTextColor(this.activity.getResources().getColor(R.color.black));
+            }
+
+            /*
             if(diagnosticResult&&!preResult)
             {
                 //如果诊断结果正常
@@ -547,6 +562,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 DiagnosticResult.setText(R.string.abnormal);
                 DiagnosticResult.setTextColor(this.activity.getResources().getColor(R.color.red));
             }
+            */
             //快相方向
             if(calculate.judegeEye())
             {
