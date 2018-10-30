@@ -124,12 +124,12 @@ public class VideoActivity extends AppCompatActivity {
                 //文本变化后
             }
         });
-        File file=new File(Tool.VideoStoragePath);
+        File file=new File(Tool.StorageVideoPath);
         if(file.exists())
         {
             if(!file.isDirectory())
             {
-                deleteFile(Tool.VideoStoragePath);
+                deleteFile(Tool.StorageVideoPath);
                 if(file.delete())
                 {
                     L.d("NystagmusMovies文件删除成功");
@@ -274,10 +274,10 @@ public class VideoActivity extends AppCompatActivity {
     }
     private void loadVideoList()
     {
-        Vector<String> vecName=getVideoFileName(Tool.VideoStoragePath);
+        Vector<String> vecName=getVideoFileName(Tool.StorageVideoPath);
         for(String name:vecName)
         {
-            String absolutePath=Tool.VideoStoragePath+"/"+name;
+            String absolutePath=Tool.StorageVideoPath+"/"+name;
 
             MediaMetadataRetriever retriever=new MediaMetadataRetriever();
             retriever.setDataSource(absolutePath);
@@ -301,7 +301,7 @@ public class VideoActivity extends AppCompatActivity {
                 //不是文件夹，则是文件
                 String filename=subFile[iFileLength].getName();
                 //判断是否为MP4结尾
-                if(filename.trim().toLowerCase().endsWith(".mp4"))
+                if(filename.trim().toLowerCase().endsWith(".mp4")||filename.trim().toLowerCase().endsWith(".avi"))
                 {
                     //是MP4文件
                     //则判断大小，小于100KB的文件则忽略

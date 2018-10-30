@@ -1,12 +1,14 @@
 package com.example.lzh.nystagmus;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
@@ -45,6 +47,7 @@ import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
 
+import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacpp.avcodec;
 import org.bytedeco.javacpp.opencv_videoio;
 import org.bytedeco.javacv.AndroidFrameConverter;
@@ -72,10 +75,10 @@ import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
+import java.util.function.ToLongBiFunction;
 
 import static com.example.lzh.nystagmus.Utils.Calculate.MergeRealtimeAndMax;
 import static com.example.lzh.nystagmus.Utils.Calculate.getPeriod;
-import static com.example.lzh.nystagmus.Utils.Tool.VideoStoragePath;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
 
@@ -117,12 +120,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     //图像保存队列
     private BlockingQueue<Mat> leyeImageQueue=new ArrayBlockingQueue<>(100);
     private BlockingQueue<Mat> reyeImageQueue=new ArrayBlockingQueue<>(100);
-    private static boolean isSave=false;
-    private static SimpleDateFormat dateFormat=new SimpleDateFormat("yyyyMMddHHmmss");
-    private int saveFrameWidth=320;
-    private int saveFrameHeigh=120;
-    private int saveFPS=50;
-
+    private static volatile boolean isSave=false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -243,6 +241,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Tool.AddressRightEye=pref.getString("RightCameraAddress",Tool.AddressRightEye);
         Tool.RecognitionGrayValue=pref.getInt("GrayValue",Tool.RecognitionGrayValue);
 
+        if(ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE)!= PackageManager.PERMISSION_GRANTED)
+        {
+            ActivityCompat.requestPermissions(MainActivity.this,new String []{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},Storage_RequestCode);
+        }
+        File file=new File(Tool.StorageVideoPath);
+        if(!file.exists()||!file.mkdir())
+        {
+            T.showShort(this,"视频存储功能受限");
+        }
+
         L.d("项目打开");
     }
     @Override
@@ -303,7 +311,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if(grantResults.length>0&&grantResults[0]== PackageManager.PERMISSION_GRANTED)
                 {
                     /*申请权限后的事情*/
-                    openVideo();
+                    //openVideo();
                 }
                 else
                 {
@@ -364,7 +372,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         {
             isSave=false;
         }
-        new Thread(new saveVideo()).start();
+        new Thread(new storageVideo(this)).start();
 
     }
     private void stopPlay()
@@ -378,29 +386,26 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             task_reye.cancel(true);
         }
     }
-
-
-    private class saveVideo implements Runnable
+    private class storageVideo implements Runnable
     {
+        private MainActivity context;
+        public storageVideo(MainActivity context)
+        {
+            this.context=context;
+        }
         @Override
         public void run() {
-            String date=dateFormat.format(new Date());
-            File file=new File(Tool.VideoStoragePath);
-            if(!file.exists())
-            {
-                file.mkdir();
-            }
-            String savePath=Tool.VideoStoragePath+"/"+date+".avi";
+            String storagePath=Tool.getStorageVideoPath();
             opencv_videoio.VideoWriter videoWriter=new opencv_videoio.VideoWriter();
-            videoWriter.open(savePath,opencv_videoio.CV_FOURCC((byte)'M',(byte)'J',(byte)'P',(byte)'G'),saveFPS,new Size(saveFrameWidth,saveFrameHeigh),true);
-
+            videoWriter.open(storagePath,opencv_videoio.CV_FOURCC((byte)'M',(byte)'J',(byte)'P',(byte)'G'),
+                    Tool.StorageVideoFPS,new Size(Tool.StorageVideoWidth,Tool.StorageVideoHeigh),true);
             try
             {
                 while (isSave)
                 {
-                    Mat leye=leyeImageQueue.poll(2,TimeUnit.SECONDS);
-                    Mat reye=reyeImageQueue.poll(2,TimeUnit.SECONDS);
-                    if(leye==null||reye==null||leye.isNull()||reye.isNull())
+                    Mat leye=leyeImageQueue.poll(1,TimeUnit.SECONDS);
+                    Mat reye=reyeImageQueue.poll(1,TimeUnit.SECONDS);
+                    if(leye==null||reye==null||leye.isNull()||reye.isNull()||leye.rows()==0||reye.rows()==0)
                     {
                         continue;
                     }
@@ -409,21 +414,43 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     {
                         break;
                     }
-                    if(merge==null)
+                    if(merge==null||merge.isNull()||merge.cols()!=Tool.StorageVideoWidth||merge.rows()!=Tool.StorageVideoHeigh)
                     {
                         continue;
                     }
-                    opencv_imgproc.resize(merge,merge,new Size(320,120));
                     videoWriter.write(merge);
                 }
             }
             catch (InterruptedException e)
             {
                 isSave=false;
-                e.printStackTrace();
+                L.e(e.getMessage());
             }
             finally {
                 videoWriter.release();
+                File file=new File(storagePath);
+                if(file.exists())
+                {
+                    Intent intent=new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);//系统广播添加视频
+                    intent.setData(Uri.fromFile(file));
+                    context.sendBroadcast(intent);
+                    context.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            T.showShort(context,"视频保存成功");
+                        }
+                    });
+
+                }
+                else
+                {
+                    context.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            T.showShort(context,"视频保存失败");
+                        }
+                    });
+                }
             }
         }
 
@@ -440,7 +467,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             return dst;
         }
     }
-
     private void initialChart(LineChart chart,String label)
     {
         Description description=new Description();
@@ -517,7 +543,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     task_leye.isTest=true;
                     task_reye.isTest=true;
                     //isSave=true;
-                    //new Thread(new saveVideo()).start();
+                    //new Thread(new storageVideo(this)).start();
                 }
                 break;
             }
@@ -728,28 +754,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 {
                     //如果是本地视频的左眼
                     Mat mat=matConverter.convertToMat(frame);
-                    Rect reye_box=new Rect(0,1,mat.cols()/2,mat.rows()-1);
+                    Rect reye_box=new Rect(0,0,mat.cols()/2,mat.rows());
                     frameMat=new Mat(mat,reye_box);
                 }
                 else if(isLocalVideo&&!eye)
                 {
                     //如果是本地视频的右眼
                     Mat mat=matConverter.convertToMat(frame);
-                    Rect leye_box=new Rect(mat.cols()/2,1,mat.cols()/2-1,mat.rows()-1);
+                    Rect leye_box=new Rect(mat.cols()/2,0,mat.cols()/2,mat.rows());
                     frameMat=new Mat(mat,leye_box);
                 }
                 else
                 {
                     //网络单眼视频
                     frameMat=matConverter.convertToMat(frame);
+                    frameMat=cropImage(frameMat);
                     //eyeImage=matConverter.convertToMat(frame);
                 }
 
                 if(isTest)
                 {
                     this.frameNum++;
-                    //eyeImage=new Mat(frameMat.clone());
-                    opencv_imgproc.resize(frameMat,eyeImage,new Size(160,120));
+                    eyeImage=new Mat(frameMat.clone());
                 }
 
                 ImgProcess pro=new ImgProcess();
@@ -890,6 +916,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if(this.isTest&&isSave&&values[9]!=null)
             {
                 Mat eyeImage=new Mat((Mat)values[9]);
+                if(eyeImage.isNull()||eyeImage.cols()==0)
+                {
+                    return;
+                }
                 if(eye)
                 {
                     //左眼
@@ -935,6 +965,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             data.addEntry(entry,add_flag);
             add_chart.notifyDataSetChanged();
             add_chart.invalidate();
+        }
+
+        private Mat cropImage(Mat image)
+        {
+            Rect box = new Rect(image.cols()/4, image.rows()/5, image.cols()/2, image.rows()*3/5);
+            return new Mat(image,box);
         }
     }
 

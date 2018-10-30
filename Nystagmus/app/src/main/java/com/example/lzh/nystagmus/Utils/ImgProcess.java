@@ -97,7 +97,7 @@ public class ImgProcess {
      */
     public void Start(Mat eye,double eyeratio)
     {
-        eye=CropImage(eye);
+        //eye=CropImage(eye);
         opencv_core.flip(eye,eye,1);//水平翻转
         this.eye=new Mat(eye);
         EyeRatio=eyeratio;
@@ -171,6 +171,47 @@ public class ImgProcess {
         Mat binaryout=new Mat();
         opencv_imgproc.threshold(binaryimg,binaryout,value,255,opencv_imgproc.THRESH_BINARY_INV);
         return binaryout;
+    }
+
+    /**
+     * 对源图像进行对比度拉伸
+     * @param src 源图像
+     */
+    private void ContrastStretch(Mat src)
+    {
+        UByteIndexer indexer=src.createIndexer();
+        int[] pixMax={0,0,0};
+        int[] pixMin={255,255,255};
+        for(int y=0;y<src.rows();y++)
+        {
+            for(int x=0;x<src.cols();x++)
+            {
+                for(int channel=0;channel<src.channels();channel++)
+                {
+                    int temp=indexer.get(y,x,channel);
+                    if(pixMax[channel]<temp)
+                    {
+                        pixMax[channel]=temp;
+                    }
+                    if(pixMin[channel]>temp)
+                    {
+                        pixMin[channel]=temp;
+                    }
+                }
+            }
+        }
+        for(int y=0;y<src.rows();y++)
+        {
+            for(int x=0;x<src.cols();x++)
+            {
+                for(int channel=0;channel<src.channels();channel++)
+                {
+                    int temp=indexer.get(y,x,channel);
+                    int pix=(temp-pixMin[channel])*255/(pixMax[channel]-pixMin[channel]);
+                    indexer.put(y,x,channel,pix);
+                }
+            }
+        }
     }
     /**
      * 去除小面积
