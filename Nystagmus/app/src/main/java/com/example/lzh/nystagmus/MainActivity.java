@@ -33,10 +33,12 @@ import com.example.lzh.nystagmus.Utils.Box;
 import com.example.lzh.nystagmus.Utils.Calculate;
 import com.example.lzh.nystagmus.Utils.GetPath;
 import com.example.lzh.nystagmus.Utils.L;
+import com.example.lzh.nystagmus.Utils.MainHandler;
 import com.example.lzh.nystagmus.Utils.PointFilter;
 import com.example.lzh.nystagmus.Utils.T;
 import com.example.lzh.nystagmus.Utils.ImgProcess;
 import com.example.lzh.nystagmus.Utils.Tool;
+import com.getbase.floatingactionbutton.FloatingActionButton;
 import com.getbase.floatingactionbutton.FloatingActionsMenu;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.Description;
@@ -117,10 +119,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private VideoTask task_leye;//左眼任务
     private VideoTask task_reye;//右眼任务
 
-    //图像保存队列
+    //图像保存队列，用于存储
     private BlockingQueue<Mat> leyeImageQueue=new ArrayBlockingQueue<>(100);
     private BlockingQueue<Mat> reyeImageQueue=new ArrayBlockingQueue<>(100);
     private static volatile boolean isSave=false;
+
+    //图像显示队列，用于显示
+    private BlockingQueue<Mat> leyeDisplayImageQueue=new ArrayBlockingQueue<>(100);
+    private BlockingQueue<Mat> reyeDisplayImageQueue=new ArrayBlockingQueue<>(100);
+    private static volatile boolean isDisplay=false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -246,7 +253,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             ActivityCompat.requestPermissions(MainActivity.this,new String []{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},Storage_RequestCode);
         }
         File file=new File(Tool.StorageVideoPath);
-        if(!file.exists()||!file.mkdir())
+        if(!file.exists()&&!file.mkdir())
         {
             T.showShort(this,"视频存储功能受限");
         }
@@ -339,6 +346,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         //开始执行
         task_leye.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,Tool.AddressLeftEye);
         task_reye.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,Tool.AddressRightEye);
+
+        //isDisplay=true;
+        //new Thread(new displayTask(this)).start();
     }
     private void openVideo()
     {
@@ -388,17 +398,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
     private class storageVideo implements Runnable
     {
+
         private MainActivity context;
+
         public storageVideo(MainActivity context)
         {
             this.context=context;
         }
         @Override
         public void run() {
+
             String storagePath=Tool.getStorageVideoPath();
             opencv_videoio.VideoWriter videoWriter=new opencv_videoio.VideoWriter();
             videoWriter.open(storagePath,opencv_videoio.CV_FOURCC((byte)'M',(byte)'J',(byte)'P',(byte)'G'),
                     Tool.StorageVideoFPS,new Size(Tool.StorageVideoWidth,Tool.StorageVideoHeigh),true);
+
             try
             {
                 while (isSave)
@@ -409,6 +423,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     {
                         continue;
                     }
+
+
+
+
                     Mat merge=mergeImage(leye,reye);
                     if(!videoWriter.isOpened())
                     {
@@ -419,6 +437,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         continue;
                     }
                     videoWriter.write(merge);
+
+
                 }
             }
             catch (InterruptedException e)
@@ -427,6 +447,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 L.e(e.getMessage());
             }
             finally {
+
                 videoWriter.release();
                 File file=new File(storagePath);
                 if(file.exists())
@@ -451,6 +472,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         }
                     });
                 }
+
+
             }
         }
 
@@ -467,6 +490,81 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             return dst;
         }
     }
+
+    private class displayTask implements Runnable
+    {
+        private AndroidFrameConverter bitmapConverter1=new AndroidFrameConverter();
+        private AndroidFrameConverter bitmapConverter2=new AndroidFrameConverter();
+        private OpenCVFrameConverter.ToIplImage matConverter=new OpenCVFrameConverter.ToIplImage();
+        private Frame frame_display_leye=null;
+        private Frame frame_display_reye=null;
+        private Bitmap bitmap_display_leye=null;
+        private Bitmap bitmap_display_reye=null;
+
+        private MainActivity context;
+        public displayTask(MainActivity context)
+        {
+            this.context=context;
+        }
+        @Override
+        public void run() {
+            try
+            {
+                while (isDisplay)
+                {
+
+                    int flag=1;
+
+                    Mat leye=leyeDisplayImageQueue.poll(1,TimeUnit.SECONDS);
+                    Mat reye=reyeDisplayImageQueue.poll(1,TimeUnit.SECONDS);
+
+                    boolean Flag_leye=!(leye==null||leye.isNull()||leye.rows()==0);
+                    boolean Flag_reye=!(reye==null||reye.isNull()||reye.rows()==0);
+
+                    MainHandler.getInstance().post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if(Flag_leye)
+                            {
+                                frame_display_leye=matConverter.convert(leye);
+                                bitmap_display_leye=bitmapConverter1.convert(frame_display_leye);
+                                context.imageView_leye.setImageBitmap(bitmap_display_leye);
+                            }
+                            if(Flag_reye)
+                            {
+                                frame_display_reye=matConverter.convert(reye);
+                                bitmap_display_reye=bitmapConverter2.convert(frame_display_reye);
+                                context.imageView_reye.setImageBitmap(bitmap_display_reye);
+                            }
+                        }
+                    });
+
+
+                }
+            }
+            catch (InterruptedException e)
+            {
+                isDisplay=false;
+                L.e(e.getMessage());
+                MainHandler.getInstance().post(new Runnable() {
+                    @Override
+                    public void run() {
+                        T.showShort(MainActivity.this,"视频播放错误");
+                    }
+                });
+
+            }
+            finally {
+                MainHandler.getInstance().post(new Runnable() {
+                    @Override
+                    public void run() {
+                        T.showShort(MainActivity.this,"视频播放结束");
+                    }
+                });
+            }
+        }
+    }
+
     private void initialChart(LineChart chart,String label)
     {
         Description description=new Description();
@@ -505,7 +603,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         chart.setData(data);
 
     }
-
     @Override
     protected void onActivityResult(int requestCode,int resultCode,Intent data)
     {
@@ -544,6 +641,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     task_reye.isTest=true;
                     //isSave=true;
                     //new Thread(new storageVideo(this)).start();
+                    //isDisplay=true;
+                    //new Thread(new displayTask(this)).start();
                 }
                 break;
             }
@@ -648,6 +747,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         {
             this.isTest=false;
             isSave=false;
+            isDisplay=false;
             //诊断结果
             boolean diagnosticResult=calculate.judgeDiagnosis();//诊断结果
             String preResultStr=DiagnosticResult.getText().toString();
@@ -659,6 +759,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 //本地视频的话显示不正常
                 DiagnosticResult.setText(R.string.abnormal);
                 DiagnosticResult.setTextColor(this.activity.getResources().getColor(R.color.red));
+
             }
             else
             {
@@ -777,11 +878,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     this.frameNum++;
                     eyeImage=new Mat(frameMat.clone());
                 }
-
+                eyeMat=new Mat(frameMat.clone());
                 ImgProcess pro=new ImgProcess();
                 pro.Start(frameMat,1.8);
                 pro.Process();
-                eyeMat=pro.Outeye();
                 float relativeRotation=0;//圆心相对旋转坐标
                 float relativeX=0;//圆心相对X坐标
                 float relativeY=0;//圆心相对Y坐标
@@ -795,6 +895,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     //开始测试后进行波形分析
                     for(Box box:pro.circles())
                     {
+                        Point point=new Point(eyeMat.cols()-(int)box.getX(),(int)box.getY());
+                        drawCross(eyeMat,point,new Scalar(255,255,255,0),1);
                         isCenter=true;
                         //先滤波处理
                         filter.add(box);
@@ -866,6 +968,23 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             {
                 return;
             }
+            /*
+            if(isDisplay)
+            {
+                if(eye)
+                {
+                    //左眼
+                    leyeDisplayImageQueue.offer(mat_display);
+                }
+                else
+                {
+                    //右眼
+                    reyeDisplayImageQueue.offer(mat_display);
+                }
+
+            }
+            */
+
             frame_display=matConverter.convert(mat_display);
             bitmap_display=bitmapConverter.convert(frame_display);
             if(eye)
@@ -876,6 +995,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             {
                 this.activity.imageView_reye.setImageBitmap(bitmap_display);
             }
+
+
             //波形图绘制
             boolean isCenter=(Boolean)values[1];
             int flag=eye?0:1;
@@ -915,7 +1036,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
             if(this.isTest&&isSave&&values[9]!=null)
             {
-                Mat eyeImage=new Mat((Mat)values[9]);
+                Mat eyeImage=new Mat((Mat)values[0]);
                 if(eyeImage.isNull()||eyeImage.cols()==0)
                 {
                     return;
@@ -972,6 +1093,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Rect box = new Rect(image.cols()/4, image.rows()/5, image.cols()/2, image.rows()*3/5);
             return new Mat(image,box);
         }
-    }
 
+        private void drawCross(Mat img,Point point,Scalar color,int thickness)
+        {
+            int heigth=img.rows();
+            int width=img.cols();
+            Point above=new Point(point.x(),0);
+            Point below=new Point(point.x(),heigth);
+            Point left=new Point(0,point.y());
+            Point right=new Point(width,point.y());
+            //绘制横线
+            opencv_imgproc.line(img,left,right,color,thickness,8,0);
+            //绘制竖线
+            opencv_imgproc.line(img,above,below,color,thickness,8,0);
+
+        }
+    }
 }

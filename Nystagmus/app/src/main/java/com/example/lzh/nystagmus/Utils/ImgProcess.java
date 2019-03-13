@@ -59,6 +59,7 @@ import static org.bytedeco.javacpp.opencv_imgproc.boundingRect;
 import static org.bytedeco.javacpp.opencv_imgproc.cvApproxPoly;
 import static org.bytedeco.javacpp.opencv_imgproc.cvContourPerimeter;
 import static org.bytedeco.javacpp.opencv_imgproc.cvGetSpatialMoment;
+import static org.bytedeco.javacpp.opencv_imgproc.line;
 import static org.bytedeco.javacpp.opencv_ml.SVM.C;
 
 /**
@@ -457,6 +458,7 @@ public class ImgProcess {
         opencv_imgproc.cvLine(img,left,right,color,thickness,8,0);
         //绘制竖线
         opencv_imgproc.cvLine(img,above,below,color,thickness,8,0);
+
     }
     /**
      * 眼睛图像识别处理
