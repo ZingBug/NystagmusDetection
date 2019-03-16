@@ -432,11 +432,11 @@ public class ImgProcess {
     {
         for(int i=0;i<circles.size();++i)
         {
-            CvPoint center=new CvPoint((int)Math.round(circles.get(i).getX()),(int)Math.round(circles.get(i).getY()));
-            int radius=(int)circles.get(i).getR();
+            //CvPoint center=new CvPoint((int)Math.round(circles.get(i).getX()),(int)Math.round(circles.get(i).getY()));
+            //int radius=(int)circles.get(i).getR();
             //opencv_imgproc.cvCircle(midImage,center,1,cvblue,-1,8,0);//画圆心
             //opencv_imgproc.cvCircle(midImage,center,radius,cvred,1,8,0);//画圆轮廓
-            drawCross(midImage,center,cvwhite,1);//绘制十字光标
+            //drawCross(midImage,center,cvwhite,1);//绘制十字光标
         }
     }
     /**
@@ -518,14 +518,14 @@ public class ImgProcess {
                 }
             }
         }
-
+        /*
         if(circles.size()>0)
         {
             PlotC(circles,eyeImage);//绘制左眼圆心和圆轮廓
         }
-
+        */
         //opencv_imgproc.cvDrawContours(eyeImage,cvContourKeep,cvgreen,cvgreen,1);//使用javacv绘制轮廓
-        eye=new Mat(eyeImage);
+        //eye=new Mat(eyeImage);
     }
     public Iterable<Box> circles()
     {
